@@ -1,0 +1,42 @@
+---
+- hosts: localhost
+
+  collections:
+    - cyberark.isp
+
+  tasks:
+
+    - name: Logon to CyberArk Vault using ISP Authentication
+      cyberark_authentication:
+        api_base_url: "https://tenant.id.cyberark.cloud"
+        client_id: "userdemo"
+        client_secret: "password"
+
+    - name: Show cyberark session
+      debug:
+        var: cyberark_session
+
+    - name: Account
+      cyberark_account:
+        logging_level: DEBUG
+        api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
+        identified_by: "address,username"
+        safe: "Partner-TEST"
+        address: "cyberark.local"
+        username: "cyberark-administrator"
+        platform_id: WinDesktopLocal
+        account_name: ansible-test-windesktop
+        secret: "CyberarkFirst"
+        platform_account_properties:
+          LogonDomain: "RedHatAnsible"
+          OwnerName: "Edward Nunez"
+          # Port: 8080
+        secret_management:
+          automatic_management_enabled: true
+        state: retrieve
+        cyberark_session: "{{ cyberark_session }}"
+      register: cyberark_account
+
+    - name: Show account
+      debug:
+        var: cyberark_account

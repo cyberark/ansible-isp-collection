@@ -1,0 +1,33 @@
+---
+- hosts: localhost
+
+  collections:
+    - cyberark.isp
+
+  tasks:
+
+    - name: Logon to CyberArk Vault using ISP Authentication
+      cyberark_authentication:
+        api_base_url: "https://tenant.id.cyberark.cloud"
+        client_id: "userdemo"
+        client_secret: "password"
+
+
+    - name: Retrieve account and password
+      cyberark.pas.cyberark_account:
+        identified_by: "address,username"
+        safe: "Test"
+        address: "cyberark.local"
+        username: "cyberark-administrator"
+        state: retrieve
+        cyberark_session: "{{ cyberark_session }}"
+      register: retrieveaccount
+
+    - name: Debug message
+      debug:
+        var: retrieveaccount
+
+    - name: Logoff from CyberArk Vault
+      cyberark_authentication:
+        state: absent
+        cyberark_session: "{{ cyberark_session }}"

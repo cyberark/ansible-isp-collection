@@ -1,0 +1,46 @@
+---
+- hosts: localhost
+
+  collections:
+    - cyberark.isp
+
+  tasks:
+
+    - name: Logon to CyberArk Vault using ISP Authentication
+      cyberark_authentication:
+        api_base_url: "https://tenant.id.cyberark.cloud"
+        client_id: "userdemo"
+        client_secret: "password"
+
+    - name: Show cyberark session
+      debug:
+        var: cyberark_session
+
+    - name: User
+      cyberark_user:
+        api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
+        logging_level: DEBUG
+        username: test
+        initial_password: Cyberark1
+        state: present
+        enable_user: True
+        group_name: Vault Admins
+        business_address:
+          workCity: Fremont
+          workState: CA
+          workCountry: USA
+        personal_details:
+          firstName: Enrique
+          lastName: Reyes
+        internet:
+          businessEmail: mail01@mail.com
+          homeEmail: mail02@mail.com
+        phones:
+          cellularNumber: (510)999-9999
+          businessNumber: (650)888-8888
+        cyberark_session: '{{ cyberark_session }}'
+      register: cyberark_result
+
+    - name: Show message
+      debug:
+        var: cyberark_result

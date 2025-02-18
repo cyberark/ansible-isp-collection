@@ -1,0 +1,25 @@
+---
+- hosts: localhost
+
+  collections:
+    - cyberark.isp
+
+  tasks:
+
+    - name: Logon to CyberArk Vault using ISP Authentication
+      cyberark_authentication:
+        api_base_url: "https://tenant.id.cyberark.cloud"
+        client_id: "userdemo"
+        client_secret: "password"
+
+    - name: Show cyberark session
+      debug:
+        var: cyberark_session
+
+    - name: Logoff from CyberArk Vault using ISP Authentication
+      cyberark_authentication:
+        state: absent
+
+    - name: Show cyberark session
+      debug:
+        var: cyberark_session
