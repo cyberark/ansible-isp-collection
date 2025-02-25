@@ -7,7 +7,7 @@
 
 ## Collection
 
-#### cyberark.pas
+#### cyberark.isp
 
 This collection is the CyberArk Identity Security Platform (ISP) project and can be found on [ansible galaxy](https://galaxy.ansible.com/cyberark/isp). This is aimed to enable the automation of securing privileged access by storing privileged accounts in the Enterprise Password Vault (EPV), controlling user's access to privileged accounts in EPV, and securely retrieving secrets using Central Credential Provider (CCP).
 
