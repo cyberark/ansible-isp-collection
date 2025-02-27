@@ -33,7 +33,7 @@ The following modules will allow CyberArk administrators to automate the followi
 - Add a CyberArk User
 - Delete a CyberArk User
 - Update a CyberArk User's account parameters
-    - Enable/Disable, change password, mark for change at next login, etc
+- Enable/Disable, change password, mark for change at next login, etc
 <br>[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_user.md)<br/>
 
 #### cyberark_account
