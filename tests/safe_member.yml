@@ -8,9 +8,9 @@
 
     - name: Logon to CyberArk Vault using ISP Authentication
       cyberark_authentication:
-        api_base_url: "https://baseurl"
-        client_id: "username"
-        client_secret: "password"
+        api_base_url: "https://ispbaseurl"
+        client_id: "id"
+        client_secret: "secret"
 
     - name: Show cyberark session
       debug:
@@ -18,17 +18,44 @@
 
     - name: Application
       cyberark_application:
-        api_base_url: "https://baseurl"
+        api_base_url: "https://apibaseurl"
         # description: "Application for Partner EdwardTest"
         logging_level: DEBUG
-        app_id: "EdwardTest_AppID"
+        app_id: "xxx_AppID"
         authentication:
           - AuthType: path
             AuthValue: "/tmp"
-            # Comment: "Path for /tmp only"
             IsFolder: True
+          - AuthType: path
+            AuthValue: "/var/tmp"
+            IsFolder: True
+            AllowInternalScripts: True
+          - AuthType: path
+            AuthValue: "/shr/apps"
+            IsFolder: True
+            AllowInternalScripts: True
           - AuthType: osUser
             AuthValue: "Edward/Edward"
+          - AuthType: osUser
+            AuthValue: "BizDevTech/Simon"
+          - AuthType: hash
+            AuthValue: "HASH123332223"
+            Comment: "This is the hash for version 1"
+          - AuthType: machineAddress
+            AuthValue: "2.2.2.2"
+            Comment: "Set of address"
+          - AuthType: machineAddress
+            AuthValue: "3.3.3.3"
+          - AuthType: certificateSerialNumber
+            AuthValue: "1E8AB650DC258AE3"
+            Comment: "Certificate for authentication"
+          - AuthType: certificateSerialNumber
+            AuthValue: "2E8AB650DC258AE3"
+            Comment: "Authentication 2"
+          - AuthType: certificateAttr
+            Issuer: "CN=Thawte RSA CA 2018,OU=www.digicert.com"
+            Subject: ["CN=yourcompany.com","OU=IT","C=IL"]
+            SubjectAlternativeName: ["DNS Name=www.example.com","IP Address=1.2.3.4"]
         state: present
         cyberark_session: '{{ cyberark_session }}'
       register: cyberark_result
@@ -37,74 +64,4 @@
       debug:
         var: cyberark_result
 
-
-    # - name: Safe
-    #   cyberark_safe:
-    #     api_base_url: "https://baseurl"
-    #     description: "Safe for Partner EdwardTest"
-    #     logging_level: DEBUG
-    #     safe_name: "Partner-EdwardTest"
-    #     number_of_days_retention: 7
-    #     state: present
-    #     cyberark_session: '{{ cyberark_session }}'
-    #   register: cyberark_result
-
-    # - name: Show message
-    #   debug:
-    #     var: cyberark_result
-
-    # - name: Add member
-    #   cyberark_safe_member:
-    #     api_base_url: "https://baseurl"
-    #     logging_level: DEBUG
-    #     safe_name: "Partner-EdwardTest"
-    #     member_name: "BD Tech"
-    #     permissions: 
-    #       useAccounts: True
-    #       retrieveAccounts: True
-    #       listAccounts: True
-    #       addAccounts: True
-    #       updateAccountContent: True
-    #       updateAccountProperties: True
-    #       initiateCPMAccountManagementOperations: True
-    #       specifyNextAccountContent: True
-    #       renameAccounts: True
-    #       deleteAccounts: True
-    #       unlockAccounts: True
-    #       manageSafe: True
-    #       manageSafeMembers: True
-    #       backupSafe: True
-    #       viewAuditLog: True
-    #       viewSafeMembers: True
-    #       requestsAuthorizationLevel1: True
-    #       requestsAuthorizationLevel2: False
-    #       accessWithoutConfirmation: True
-    #       createFolders: True
-    #       deleteFolders: True
-    #       moveAccountsAndFolders: True
-    #     cyberark_session: '{{ cyberark_session }}'
-    #     state: present
-    #   register: cyberark_result
-
-    # - name: Show message
-    #   debug:
-    #     var: cyberark_result
-
-    # - name: Add member
-    #   cyberark_safe_member:
-    #     api_base_url: "https://baseurl"
-    #     logging_level: DEBUG
-    #     safe_name: "Partner-EdwardTest"
-    #     member_name: "edward@cyberark.cloud.10781"
-    #     permissions: 
-    #       useAccounts: True
-    #       retrieveAccounts: True
-    #       listAccounts: True
-    #     cyberark_session: '{{ cyberark_session }}'
-    #     state: absent
-    #   register: cyberark_result
-
-    # - name: Show message
-    #   debug:
-    #     var: cyberark_result
 

@@ -322,7 +322,175 @@ def application_details(module):
             status_code=-1,
         )
 
+def key_for_auth_type(auth):
+    logging.debug("key_for_auth_type auth: " + json.dumps(auth))
+    key_value = ""
+    if auth["AuthType"].lower() == "certificateattr":
+        issuer = ""
+        subject = ""
+        subjectAlternativeName = ""
+        if "Issuer" in auth and auth["Issuer"] is not None:
+            issuer = ", ".join(auth["Issuer"]) if isinstance(auth["Issuer"], list) else auth["Issuer"]
 
+        if "Subject" in auth and auth["Subject"] is not None:
+            subject = ", ".join(auth["Subject"]) if isinstance(auth["Subject"], list) else auth["Subject"]
+
+        if "SubjectAlternativeName" in auth and auth["SubjectAlternativeName"] is not None:
+            subjectAlternativeName = ", ".join(auth["SubjectAlternativeName"]) if isinstance(auth["SubjectAlternativeName"], list) else auth["SubjectAlternativeName"]
+        
+        key_value = issuer + "-" + subject + "-" + subjectAlternativeName
+    else:
+        key_value = auth["AuthValue"]
+    
+    logging.debug("key_value=" + key_value)
+    return key_value
+
+def authentication_method_process(module, existing_info) -> bool:
+    app_id = module.params["app_id"]
+    cyberark_session = module.params["cyberark_session"]
+    api_base_url = module.params["api_base_url"]
+    validate_certs = False
+    headers = telemetryHeaders(cyberark_session)
+
+    # Verify if Authentication Methods have to be updated
+    existing_authentication = existing_info["authentication"]
+    authentication = module.params["authentication"]
+    logging.debug("existing_authentication: " + json.dumps(existing_authentication))
+    logging.debug("authentication: " + json.dumps(authentication))
+    # required_if = [
+    #     ("AuthType", "path", ["AuthValue", "IsFolder", "AllowInternalScripts"]),
+    #     ("AuthType", "hash", ["AuthValue"]),
+    #     ("AuthType", "osUser", ["AuthValue"]),
+    #     ("AuthType", "machineAddress", ["AuthValue"]),
+    #     ("AuthType", "certificateserialnumber", ["AuthValue"]),
+    #     ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"], True),
+    # ]
+    updated = False
+    existing_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in existing_authentication)
+    new_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in authentication)
+    logging.debug("existing_set: " + json.dumps(list(existing_set)))
+    logging.debug("new_set: " + json.dumps(list(new_set)))
+    # for auth in existing_authentication:
+
+    for auth in existing_authentication:
+        if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in new_set):
+            logging.debug("EXISTING COMBINATION TO REMOVE: " + json.dumps(auth))
+            delete_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/{pauthid}/".format(pappid=quote(app_id),pauthid=auth["authID"])
+            delete_url = construct_url(api_base_url, delete_end_point)
+            try:
+                logging.debug("DELETE_URL = " + delete_url)
+                # execute REST action
+                open_url(
+                    delete_url,
+                    method="DELETE",
+                    headers=headers,
+                    data=None,
+                    # data=json.dumps({"application": payload}),
+                    validate_certs=validate_certs,
+                    timeout=module.params['timeout'],
+                )
+                updated = True
+
+            except (HTTPError, httplib.HTTPException) as http_exception:
+                logging.info("response: " + http_exception.read().decode("utf-8"))
+                module.fail_json(
+                    msg=(
+                        "Error while performing action on authentication_method."
+                        "Please validate parameters provided."
+                        "\n*** end_point=%s\n ==> %s"
+                        % (delete_url, to_text(http_exception))
+                    ),
+                    # payload=payload,
+                    headers=headers,
+                    status_code=http_exception.code,
+                )
+            except Exception as unknown_exception:
+
+                module.fail_json(
+                    msg=(
+                        "Unknown error while performing action on authentication_method."
+                        "\n*** end_point=%s\n%s"
+                        % (delete_url, to_text(unknown_exception))
+                    ),
+                    # payload=payload,
+                    headers=headers,
+                    status_code=-1,
+                )
+
+    for auth in authentication:
+        if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in existing_set):
+            logging.debug("COMBINATION TO ADD: " + json.dumps(auth))
+            auth_payload = {"AuthType": auth["AuthType"]}
+            if auth["AuthType"].lower() == "certificateattr":
+                if "Issuer" in auth and auth["Issuer"] is not None:
+                    auth_payload["Issuer"] = auth["Issuer"]
+
+                if "Subject" in auth and auth["Subject"] is not None:
+                    auth_payload["Subject"] = auth["Subject"]
+
+                if "SubjectAlternativeName" in auth and auth["SubjectAlternativeName"] is not None:
+                    auth_payload["SubjectAlternativeName"] = auth["SubjectAlternativeName"]
+            else:
+                auth_payload["AuthValue"] = auth["AuthValue"]
+
+            if auth["AuthType"].lower() in ["hash", "certificateserialnumber"]:
+                if "Comment" in auth and auth["Comment"] is not None:
+                    auth_payload["Comment"] = auth["Comment"]
+                
+            if auth["AuthType"] == "path":
+                logging.debug("**** AuthType=" + auth["AuthType"])
+                if "IsFolder" in auth and auth["IsFolder"] is not None:
+                    auth_payload["IsFolder"] = auth["IsFolder"]
+                
+                if "AllowInternalScripts" in auth and auth["AllowInternalScripts"] is not None:
+                    auth_payload["AllowInternalScripts"] = auth["AllowInternalScripts"]
+                
+            add_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/".format(pappid=quote(app_id))
+            add_url = construct_url(api_base_url, add_end_point)
+            try:
+                logging.debug("ADD_URL = " + add_url)
+                logging.debug("auth_payload: " + json.dumps(auth_payload))
+                # execute REST action
+                open_url(
+                    add_url,
+                    method="POST",
+                    headers=headers,
+                    data=json.dumps({"authentication": auth_payload}),
+                    validate_certs=validate_certs,
+                    timeout=module.params['timeout'],
+                )
+                updated = True
+
+            except (HTTPError, httplib.HTTPException) as http_exception:
+                logging.info("response: " + http_exception.read().decode("utf-8"))
+                module.fail_json(
+                    msg=(
+                        "Error while performing action on authentication_method."
+                        "Please validate parameters provided."
+                        "\n*** end_point=%s\n ==> %s"
+                        % (add_url, to_text(http_exception))
+                    ),
+                    payload=auth_payload,
+                    headers=headers,
+                    status_code=http_exception.code,
+                )
+            except Exception as unknown_exception:
+
+                module.fail_json(
+                    msg=(
+                        "Unknown error while performing action on authentication_method."
+                        "\n*** end_point=%s\n%s"
+                        % (add_url, to_text(unknown_exception))
+                    ),
+                    payload=auth_payload,
+                    headers=headers,
+                    status_code=-1,
+                )
+                
+        else:
+            pass # Possible UPDATE?
+
+    return updated
 
 def application_add_or_update(module, HTTPMethod, existing_info):
 
@@ -415,27 +583,9 @@ def application_add_or_update(module, HTTPMethod, existing_info):
     else:
         proceed = True
 
+    updated = authentication_method_process(module, existing_info)
+    response_code = 0
 
-    # Verify if Authentication Methods have to be updated
-    existing_authentication = existing_info["authentication"]
-    authentication = module.params["authentication"]
-    logging.debug("existing_authentication: " + json.dumps(existing_authentication))
-    logging.debug("authentication: " + json.dumps(authentication))
-    # required_if = [
-    #     ("AuthType", "path", ["AuthValue", "IsFolder", "AllowInternalScripts"]),
-    #     ("AuthType", "hash", ["AuthValue"]),
-    #     ("AuthType", "osUser", ["AuthValue"]),
-    #     ("AuthType", "machineAddress", ["AuthValue"]),
-    #     ("AuthType", "certificateserialnumber", ["AuthValue"]),
-    #     ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"], True),
-    # ]
-    set1 = set((idx, x["AuthType"],x["AuthValue"]) for idx, x in enumerate(existing_authentication))
-    logging.debug("set1: " + json.dumps(list(set1)))
-    # for auth in existing_authentication:
-
-
-
-    updated = False
     if proceed:
         logging.info("Proceeding to either update or create")
         url = construct_url(api_base_url, end_point)
@@ -452,9 +602,8 @@ def application_add_or_update(module, HTTPMethod, existing_info):
                 timeout=module.params['timeout'],
             )
 
-            (_, result, _) = application_details(module)
-
-            return (True, result, response.get_code())
+            updated = True
+            response_code = response.status
 
         except (HTTPError, httplib.HTTPException) as http_exception:
             logging.info("response: " + http_exception.read().decode("utf-8"))
@@ -484,6 +633,11 @@ def application_add_or_update(module, HTTPMethod, existing_info):
     
     if updated == False:
         return (False, existing_info, 200)
+    else:
+        (_, result, _) = application_details(module)
+
+        return (True, result, response_code)
+        
 
 
 def application_delete(module):
@@ -555,8 +709,8 @@ def main():
         ("AuthType", "hash", ["AuthValue"]),
         ("AuthType", "osUser", ["AuthValue"]),
         ("AuthType", "machineAddress", ["AuthValue"]),
-        ("AuthType", "certificateserialnumber", ["AuthValue"]),
-        ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"], True),
+        ("AuthType", "certificateSerialNumber", ["AuthValue"]),
+        ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"]),
     ]
 
     module = AnsibleModule(
@@ -577,9 +731,9 @@ def main():
                                 required_if=required_if,
                                 options=dict(
                                     AllowInternalScripts=dict(type="bool", default=False),
-                                    AuthType=dict(type="str", required=True, choices=["path", "osUser"]),
+                                    AuthType=dict(type="str", required=True, choices=["path", "osUser", "hash", "machineAddress", "certificateSerialNumber", "certificateAttr"]),
                                     AuthValue=dict(type="str"),
-                                    Comment=dict(type="str", required=False), # , required_if=required_if),
+                                    Comment=dict(type="str"),
                                     IsFolder=dict(type="bool", default=False),
                                     Subject=dict(type="list", elements="str"),
                                     Issuer=dict(type="list", elements="str"),

@@ -58,4 +58,4 @@ The following modules will allow CyberArk administrators to automate the followi
 #### Author Information
 - CyberArk Business Development Technical Team 
     - @cyberark-bizdev
-
+    - @nitsan-tzur
