@@ -1,4 +1,4 @@
-# cyberark_user
+# cyberark_safe
 
 This module allows admins to Add, Delete, and Modify CyberArk Safes.
 
