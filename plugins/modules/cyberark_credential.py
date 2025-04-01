@@ -16,18 +16,15 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = """
 ---
 module: cyberark_credential
-short_description: Credential retrieval using AAM Central Credential Provider.
+short_description: Credential retrieval using Secrets Manager Central Credential Provider.
 author:
     - Edward Nunez (@enunez-cyberark)
     - CyberArk BizDev (@cyberark-bizdev)
-    - Erasmo Acosta (@erasmix)
-    - James Stutes (@JimmyJamCABD)
 version_added: '1.0.0'
 description:
     - Creates a URI for retrieving a credential from a password object stored
-      in the Cyberark Vault.  The request uses the Privileged Account Security
-      Web Services SDK through the Central Credential Provider by requesting
-      access with an Application ID.
+      in the Cyberark Vault.  It uses the Secrets Manager Central Credential Provider
+      REST API by requesting access with an Application ID.
 
 options:
     api_base_url:
@@ -231,7 +228,6 @@ def telemetryHeaders(session = None):
     if session is not None:
         headers["Authorization"] = "Bearer " + session["access_token"]
     
-    logging.debug("headers => " + json.dumps(headers))
     return headers
 
 def retrieve_credential(module):

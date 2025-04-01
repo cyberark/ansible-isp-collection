@@ -18,17 +18,23 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = r"""
 ---
 module: cyberark_user
-short_description: CyberArk User Management using PAS Web Services SDK.
+short_description: CyberArk User Management using Privilege Cloud Share Services REST APIs.
 author:
   - Edward Nunez (@enunez-cyberark)
   - Cyberark Bizdev (@cyberark-bizdev)
 version_added: '1.0.0'
 description:
-    - CyberArk User Management using PAS Web Services SDK,
+    - CyberArk User Management using Privilege Cloud Share Services REST APIs,
       It currently supports the following actions Get User Details, Add User,
       Update User, Delete User.
 
 options:
+    api_base_url:
+        description:
+            - A string containing the base URL of the server hosting
+              CyberArk's Privileged Cloud ISP SDK.
+        type: str
+        required: true
     username:
         description:
             - The name of the user who will be queried (for details), added,
@@ -173,11 +179,6 @@ options:
 """
 
 EXAMPLES = r"""
-- name: Logon to CyberArk Vault using PAS Web Services SDK
-  cyberark_authentication:
-    api_base_url: https://components.cyberark.local
-    use_shared_logon_authentication: true
-
 - name: Create user & immediately add it to a group
   cyberark_user:
     username: username
@@ -225,6 +226,7 @@ status_code:
 
 import json
 import base64
+import logging
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
@@ -232,7 +234,6 @@ from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
 from ansible.module_utils.six.moves.urllib.parse import quote
-import logging
 
 
 def construct_url(api_base_url, end_point):
@@ -253,8 +254,7 @@ def telemetryHeaders(session = None):
 def user_details(module):
 
     # Get username from module parameters, and api base url
-    # along with validate_certs from the cyberark_session established
-    username = module.params["username"]
+    # along with the cyberark_session established
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = False
@@ -400,11 +400,6 @@ def user_add_or_update(module, HTTPMethod, existing_info):
         payload["personalDetails"] = module.params["personal_details"]
 
     # --------------------------------------------------------------
-    logging.debug(
-        "HTTPMethod = " + HTTPMethod + " module.params = " + json.dumps(module.params)
-    )
-    logging.debug("Existing Info: %s", json.dumps(existing_info))
-    logging.debug("payload => %s", json.dumps(payload))
 
     if HTTPMethod == "PUT" and (
         "new_password" not in module.params or module.params["new_password"] is None
@@ -461,19 +456,18 @@ def user_add_or_update(module, HTTPMethod, existing_info):
         }
 
         for field_name in updateable_fields:
-            logging.debug("#### field_name : %s", field_name)
             if (
                 field_name in payload
                 and field_name in existing_info
             ):
                 if isinstance(payload[field_name], str) and payload[field_name] != existing_info[field_name]:
-                    logging.debug("Changing value for %s", field_name)
+                    logging.info("Changing value for %s", field_name)
                     proceed = True
                 elif isinstance(payload[field_name], dict):
                     full_field = empty_object_fields[field_name]
                     full_field.update(payload[field_name])
                     if full_field != existing_info[field_name]:
-                        logging.debug("Changing OBJECT value for %s", field_name)
+                        logging.info("Changing OBJECT value for %s", field_name)
                         proceed = True
 
     else:
@@ -539,7 +533,6 @@ def resolve_username_to_id(module):
             url,
             method="GET",
             headers=headers,
-            # validate_certs=False,
             timeout=module.params['timeout'],
         )
         users = json.loads(response.read())
@@ -549,7 +542,7 @@ def resolve_username_to_id(module):
             user_id = users["Users"][0]["id"]
 
         # If we made it here we had 1 or 0 users, return them
-        logging.debug("Resolved username {%s} to ID {%s}", username, user_id)
+        logging.info("Resolved username {%s} to ID {%s}", username, user_id)
         return user_id
 
     except (HTTPError, httplib.HTTPException) as http_exception:
@@ -598,7 +591,6 @@ def user_delete(module):
             url,
             method="DELETE",
             headers=headers,
-            #validate_certs=validate_certs,
             timeout=module.params['timeout'],
         )
 
@@ -659,7 +651,7 @@ def resolve_group_name_to_id(module):
         if groups["count"] > 0:
             group_id = groups["value"][0]["id"]
         # If we made it here we had 1 or 0 users, return them
-        logging.debug("Resolved group_name %s to ID %s", group_name, group_id)
+        logging.info("Resolved group_name %s to ID %s", group_name, group_id)
         return group_id
 
     except (HTTPError, httplib.HTTPException) as http_exception:
@@ -683,9 +675,7 @@ def resolve_group_name_to_id(module):
 def user_add_to_group(module):
 
     # Get username, and groupname from module parameters, and api base url
-    # along with validate_certs from the cyberark_session established
-
-    # Not needed for new version
+    # along with the cyberark_session established
     username = module.params["username"]
     group_name = module.params["group_name"]
     vault_id = module.params["vault_id"]
@@ -768,7 +758,6 @@ def user_add_to_group(module):
             headers=headers,
             status_code=-1,
         )
-
 
 def main():
 

@@ -45,6 +45,29 @@ The following modules will allow CyberArk administrators to automate the followi
 - Retrieve account password<br>
 [Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_account.md)
 
+#### cyberark_safe
+
+- Create Safe
+- Delete Safe
+- Update Safe
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_safe.md)
+
+#### cyberark_safe_member
+
+- Add Safe Member
+- Delete Safe Member
+- Update Safe Member
+- Add/Update/Delete Safe Member Permissions
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_safe_member.md)
+
+#### cyberark_application
+
+- Create Application
+- Delete Aplication
+- Update Application
+- Add/Update/Delete Application Authentication
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_application.md)
+
 #### cyberark_credential
 
 - Using CyberArk Central Credential Provider (CCP), to securely retrieve secrets and account properties from EPV to be registered for use in playbooks<br>
@@ -53,9 +76,10 @@ The following modules will allow CyberArk administrators to automate the followi
 
 #### Python3
 
-- The modules will work with either python2 or python3.
+- The modules will work with Python3.
 
 #### Author Information
 - CyberArk Business Development Technical Team 
     - @cyberark-bizdev
     - @nitsan-tzur
+    - @compostCY

@@ -1,8 +1,10 @@
-def telemetryHeaders(session : None):
+def telemetryHeaders(session = None):
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-        "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)"
+        "Content-Type": "application/json",
+        "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
+        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
     }
+
     if session is not None:
-        pass
+        headers["Authorization"] = "Bearer " + session["access_token"]
     return headers

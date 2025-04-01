@@ -27,7 +27,6 @@ description:
       within the Cyberark Vault.  The request uses the Privileged Account
       Security Web Services SDK.
 
-
 options:
     state:
         description:
@@ -56,7 +55,7 @@ options:
             - A string containing the base URL of the server hosting CyberArk's
               Privileged Account Security Web Services SDK.
             - Example U(https://<IIS_Server_Ip>/PasswordVault/api/)
-        required: false
+        required: true
         type: str
     validate_certs:
         description:
@@ -470,7 +469,6 @@ def telemetryHeaders(session = None):
     if session is not None:
         headers["Authorization"] = "Bearer " + session["access_token"]
     
-    logging.debug("headers => " + json.dumps(headers))
     return headers
 
 
@@ -485,7 +483,7 @@ def equal_value(existing, parameter):
 
 def update_account(module, existing_account):
 
-    logging.debug("Updating Account")
+    logging.info("Updating Account")
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
@@ -505,7 +503,6 @@ def update_account(module, existing_account):
 
     # Determining whether to add or update properties
     for parameter_name in list(module.params.keys()):
-        logging.debug("*** parameter_name => " + parameter_name)
         if (
             parameter_name not in ansible_specific_parameters
             and module.params[parameter_name] is not None
@@ -548,15 +545,6 @@ def update_account(module, existing_account):
                                 child_cyberark_property_name,
                             )
                             if child_existing_account_value is not None:
-                                logging.debug(
-                                    (
-                                        "child_module_parm_value: %s "
-                                        "child_existing_account_value=%s path=%s"
-                                    ),
-                                    child_module_parm_value,
-                                    child_existing_account_value,
-                                    path_value
-                                )
                                 if child_module_parm_value == removal_value:
                                     removing.update(
                                         {
@@ -586,7 +574,7 @@ def update_account(module, existing_account):
                                         child_cyberark_property_name: child_module_parm_value
                                     }
                                 )
-                            logging.debug(
+                            logging.info(
                                 "parameter_name=%s  value=%s existing=%s",
                                 path_value,
                                 child_module_parm_value,
@@ -641,22 +629,22 @@ def update_account(module, existing_account):
                                 "path": "/%s" % cyberark_property_name,
                             }
                         )
-                    logging.debug(
+                    logging.info(
                         "parameter_name=%s  value=%s existing=%s",
                         parameter_name, module_parm_value, existing_account_value
                     )
 
     if len(payload["Operations"]) != 0:
         if module.check_mode:
-            logging.debug("Proceeding with Update Account (CHECK_MODE)")
-            logging.debug("Operations => %s", json.dumps(payload))
+            logging.info("Proceeding with Update Account (CHECK_MODE)")
+            logging.info("Operations => %s", json.dumps(payload))
             result = {"result": existing_account}
             changed = True
             last_status_code = -1
         else:
-            logging.debug("Proceeding with Update Account")
+            logging.info("Proceeding with Update Account")
 
-            logging.debug(
+            logging.info(
                 "Processing invidual operations (%d) => %s",
                 len(payload["Operations"]),
                 json.dumps(payload),
@@ -664,7 +652,7 @@ def update_account(module, existing_account):
             for operation in payload["Operations"]:
                 individual_payload = [operation]
                 try:
-                    logging.debug(" ==> %s", json.dumps([operation]))
+                    logging.info(" ==> %s", json.dumps([operation]))
                     response = open_url(
                         api_base_url + end_point,
                         method=HTTPMethod,
@@ -676,8 +664,6 @@ def update_account(module, existing_account):
                     result = {"result": json.loads(response.read())}
                     changed = True
                     last_status_code = response.getcode()
-
-                #                return (True, result, response.getcode())
 
                 except (HTTPError, HTTPException) as http_exception:
 
@@ -713,10 +699,9 @@ def update_account(module, existing_account):
 
     return (changed, result, last_status_code)
 
-
 def add_account(module):
 
-    logging.debug("Adding Account")
+    logging.info("Adding Account")
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
@@ -745,7 +730,7 @@ def add_account(module):
                     cyberark_child_property_name = referenced_value(
                         dict_key, cyberark_reference_fieldnames, default=dict_key
                     )
-                    logging.debug(
+                    logging.info(
                         (
                             "parameter_name =%s.%s cyberark_property_name=%s "
                             "cyberark_child_property_name=%s"
@@ -776,7 +761,7 @@ def add_account(module):
                     ):
                         payload[
                             parameter_name
-                        ] = module_parm_value  # module.params[parameter_name]
+                        ] = module_parm_value
                 else:
                     module_parm_value = deep_get(
                         module.params, parameter_name, _empty, True
@@ -787,18 +772,18 @@ def add_account(module):
                     ):
                         payload[
                             cyberark_reference_fieldnames[parameter_name]
-                        ] = module_parm_value  # module.params[parameter_name]
-            logging.debug("parameter_name =%s", parameter_name)
+                        ] = module_parm_value
+            logging.info("parameter_name =%s", parameter_name)
 
-    logging.debug("Add Account Payload => %s", json.dumps(payload))
+    logging.info("Add Account Payload => %s", json.dumps(payload))
 
     try:
 
         if module.check_mode:
-            logging.debug("Proceeding with Add Account (CHECK_MODE)")
+            logging.info("Proceeding with Add Account (CHECK_MODE)")
             return (True, {"result": None}, -1)
         else:
-            logging.debug("Proceeding with Add Account")
+            logging.info("Proceeding with Add Account")
             response = open_url(
                 api_base_url + end_point,
                 method=HTTPMethod,
@@ -842,14 +827,13 @@ def add_account(module):
             status_code=-1,
         )
 
-
 def delete_account(module, existing_account):
 
     if module.check_mode:
-        logging.debug("Deleting Account (CHECK_MODE)")
+        logging.info("Deleting Account (CHECK_MODE)")
         return (True, {"result": None}, -1)
     else:
-        logging.debug("Deleting Account")
+        logging.info("Deleting Account")
 
         cyberark_session = module.params["cyberark_session"]
         api_base_url = module.params["api_base_url"]
@@ -859,7 +843,6 @@ def delete_account(module, existing_account):
         result = {}
         HTTPMethod = "DELETE"
         end_point = "/PasswordVault/api/Accounts/%s" % existing_account["id"]
-
         headers = telemetryHeaders(cyberark_session)
 
         try:
@@ -918,7 +901,7 @@ def reset_account_if_needed(module, existing_account):
     cpm_new_secret = deep_get(
         module.params, "secret_management.new_secret", "NOT_FOUND", False
     )
-    logging.debug(
+    logging.info(
         "management_action: %s  cpm_new_secret: %s", management_action, cpm_new_secret
     )
 
@@ -937,7 +920,7 @@ def reset_account_if_needed(module, existing_account):
         and cpm_new_secret is not None
         and cpm_new_secret != "NOT_FOUND"
     ):
-        logging.debug("CPM change secret for next CPM cycle")
+        logging.info("CPM change secret for next CPM cycle")
         end_point = (
             "/PasswordVault/API/Accounts/%s/SetNextPassword"
         ) % existing_account_id
@@ -946,26 +929,26 @@ def reset_account_if_needed(module, existing_account):
     elif management_action == "change_immediately" and (
         cpm_new_secret == "NOT_FOUND" or cpm_new_secret is None
     ):
-        logging.debug("CPM change_immediately with random secret")
+        logging.info("CPM change_immediately with random secret")
         end_point = ("/PasswordVault/API/Accounts/%s/Change") % existing_account_id
         payload["ChangeEntireGroup"] = True
     elif management_action == "change_immediately" and (
         cpm_new_secret is not None and cpm_new_secret != "NOT_FOUND"
     ):
-        logging.debug("CPM change immediately secret for next CPM cycle")
+        logging.info("CPM change immediately secret for next CPM cycle")
         end_point = (
             "/PasswordVault/API/Accounts/%s/SetNextPassword"
         ) % existing_account_id
         payload["ChangeImmediately"] = True
         payload["NewCredentials"] = cpm_new_secret
     elif management_action == "reconcile":
-        logging.debug("CPM reconcile secret")
+        logging.info("CPM reconcile secret")
         end_point = ("/PasswordVault/API/Accounts/%s/Reconcile") % existing_account_id
     elif (
         "new_secret" in list(module.params.keys())
         and module.params["new_secret"] is not None
     ):
-        logging.debug("Change Credential in Vault")
+        logging.info("Change Credential in Vault")
         end_point = (
             "/PasswordVault/API/Accounts/%s/Password/Update"
         ) % existing_account_id
@@ -975,10 +958,10 @@ def reset_account_if_needed(module, existing_account):
     if end_point is not None:
 
         if module.check_mode:
-            logging.debug("Proceeding with Credential Rotation (CHECK_MODE)")
+            logging.info("Proceeding with Credential Rotation (CHECK_MODE)")
             return (True, result, -1)
         else:
-            logging.debug("Proceeding with Credential Rotation")
+            logging.info("Proceeding with Credential Rotation")
 
             result = {"result": None}
             headers = telemetryHeaders(cyberark_session)
@@ -1048,12 +1031,6 @@ def deep_get(dct, dotted_path, default=_empty, use_reference_table=True):
             if len(list(result_dct.keys())) == 0:  # No result_dct set yet
                 result_dct = dct
 
-            logging.debug(
-                "keys=%s key_field=>%s   key=>%s",
-                ",".join(list(result_dct.keys())),
-                key_field,
-                key,
-            )
             result_dct = (
                 result_dct[key_field]
                 if key_field in list(result_dct.keys())
@@ -1063,7 +1040,7 @@ def deep_get(dct, dotted_path, default=_empty, use_reference_table=True):
                 return default
 
         except KeyError as e:
-            logging.debug("KeyError %s", to_text(e))
+            logging.error("KeyError %s", to_text(e))
             if default is _empty:
                 raise
             return default
@@ -1072,10 +1049,10 @@ def deep_get(dct, dotted_path, default=_empty, use_reference_table=True):
 
 def get_account(module):
 
-    logging.debug("Finding Account")
+    logging.info("Finding Account")
 
     identified_by_fields = module.params["identified_by"].split(",")
-    logging.debug("Identified_by: %s", json.dumps(identified_by_fields))
+    logging.info("Identified_by: %s", json.dumps(identified_by_fields))
     safe_filter = (
         quote("safeName eq ") + quote(module.params["safe"])
         if "safe" in module.params and module.params["safe"] is not None
@@ -1089,8 +1066,8 @@ def get_account(module):
                 deep_get(module.params, field, "NOT FOUND", False),
             )
 
-    logging.debug("Search_String => %s", search_string)
-    logging.debug("Safe Filter => %s", safe_filter)
+    logging.info("Search_String => %s", search_string)
+    logging.info("Safe Filter => %s", safe_filter)
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
@@ -1107,13 +1084,13 @@ def get_account(module):
     else:
         end_point = "/PasswordVault/api/accounts?filter=%s" % (safe_filter)
 
-    logging.debug("End Point => %s", end_point)
+    logging.info("End Point => %s", end_point)
 
     headers = telemetryHeaders(cyberark_session)
 
     try:
 
-        logging.debug("Executing: " + api_base_url + end_point)
+        logging.info("Executing: " + api_base_url + end_point)
         response = open_url(
             api_base_url + end_point,
             method="GET",
@@ -1124,28 +1101,15 @@ def get_account(module):
         result_string = response.read()
         accounts_data = json.loads(result_string)
 
-        logging.debug("RESULT => %s", json.dumps(accounts_data))
-
         if accounts_data["count"] == 0:
             return (False, None, response.getcode())
         else:
             how_many = 0
             first_record_found = None
             for account_record in accounts_data["value"]:
-                logging.debug("Acct Record => %s", json.dumps(account_record))
                 found = False
                 for field in identified_by_fields:
                     record_field_value = deep_get(account_record, field, "NOT FOUND")
-                    logging.debug(
-                        (
-                            "Comparing field %s | record_field_name=%s  "
-                            "record_field_value=%s   module.params_value=%s"
-                        ),
-                        field,
-                        field,
-                        record_field_value,
-                        deep_get(module.params, field, "NOT FOUND"),
-                    )
                     if record_field_value != "NOT FOUND" and (
                         record_field_value
                         == deep_get(module.params, field, "NOT FOUND", False)
@@ -1159,11 +1123,6 @@ def get_account(module):
                     if first_record_found is None:
                         first_record_found = account_record
 
-            logging.debug(
-                "How Many: %d  First Record Found => %s",
-                how_many,
-                json.dumps(first_record_found),
-            )
             if how_many > 1:  # too many records found
                 module.fail_json(
                     msg=(
@@ -1205,7 +1164,6 @@ def get_account(module):
 
 
 def retrieve_password(module, existing_account):
-    logging.debug("Retrieving Password")
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
@@ -1242,8 +1200,6 @@ def retrieve_password(module, existing_account):
         password = password[1:-1]
 
         result["password"] = password
-
-        logging.debug("Password Retrieved")
 
         return (False, result, response.getcode())
 
@@ -1353,7 +1309,7 @@ def main():
     state = module.params["state"]
 
     (found, account_record, status_code) = get_account(module)
-    logging.debug(
+    logging.info(
         "Account was %s, status_code=%s", "FOUND" if found else "NOT FOUND", status_code
     )
 
@@ -1377,7 +1333,6 @@ def main():
                     "perform_management_action"
                 ]
 
-        logging.debug("Result=>%s", json.dumps(result))
         if perform_management_action == "always" or (
             perform_management_action == "on_create" and not found
         ):

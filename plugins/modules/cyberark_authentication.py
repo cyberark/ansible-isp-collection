@@ -122,12 +122,8 @@ def processAuthentication(module):
     grant_type = module.params["grant_type"]
     client_id = module.params["client_id"]
     client_secret = module.params["client_secret"]
-
-    # connection_number = module.params["connection_number"]
     state = module.params["state"]
     timeout = module.params["timeout"]
-
-    # cyberark_session = module.params["cyberark_session"]
 
     payload = ""
     result = None
@@ -137,15 +133,8 @@ def processAuthentication(module):
 
     if state == "present":  # Logon Action
 
-        # Different end_points based on the use of desired method of auth
-
         end_point = api_base_url + "/oauth2/platformtoken"
-
-        # The payload will contain client_id, password
-        # and optionally use_radius_authentication and new_password
         payload_dict = {"grant_type": grant_type, "client_id": client_id, "client_secret": client_secret}
-
-        # payload = json.dumps(payload_dict)
         payload = urlencode(payload_dict).encode("utf-8")
         headers = telemetryHeaders()
 
@@ -192,8 +181,6 @@ def processAuthentication(module):
 
             if state == "present":  # Logon Action
 
-                # Result token from REST Api uses a different key based
-                # the use of shared logon authentication
                 token = ""
                 try:
                     token = str(json.loads(response.read()))

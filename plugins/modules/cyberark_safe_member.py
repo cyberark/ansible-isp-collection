@@ -18,21 +18,25 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = r"""
 ---
 module: cyberark_safe
-short_description: CyberArk User Management using PAS Web Services SDK.
+short_description: CyberArk Safe Member Management using Privilege Cloud Services Shared Services REST APIs.
 author:
   - Edward Nunez (@enunez-cyberark)
   - Cyberark Bizdev (@cyberark-bizdev)
 version_added: '1.0.0'
 description:
-    - CyberArk User Management using PAS Web Services SDK,
-      It currently supports the following actions Get User Details, Add User,
-      Update User, Delete User.
+    - CyberArk Safe Member Management using Privilege Cloud Services Shared Services REST APIs,
+      It currently supports the following actions Get Details, Add, Update, Delete.
 
 options:
-    username:
+    api_base_url:
         description:
-            - The name of the user who will be queried (for details), added,
-              updated or deleted.
+            - A string containing the base URL of the server hosting
+              CyberArk's Privileged Cloud ISP SDK.
+        type: str
+        required: true
+    safe_name:
+        description:
+            - The unique name of the Safe.
         type: str
         required: true
     state:
@@ -64,142 +68,188 @@ options:
               example of cyberark_session.
         type: dict
         required: true
-    initial_password:
+    member_name:
         description:
-            - The password that the new user will use to log on the first time.
-            - This password must meet the password policy requirements.
-            - This parameter is required when state is present -- Add User.
+            - The CyberArk user name or group name of the Safe member.
         type: str
-    new_password:
+        required: true
+    search_in:
         description:
-            - The user updated password. Make sure that this password meets
-              the password policy requirements.
+            - You can search within the domain using the domain ID,
+            - or within Privilege Cloud for a system component user.
         type: str
-    email:
+        default: Vault
+    membership_expiration_date:
         description:
-            - The user email address.
-        type: str
-    first_name:
+            - The member's expiration date for this Safe. For members that do not have
+              an expiration date, this value will be null. Datetime.
+        type: int
+    permissions:
         description:
-            - The user first name.
-        type: str
-    last_name:
-        description:
-            - The user last name.
-        type: str
-    change_password_on_the_next_logon:
-        description:
-            - Whether or not the user must change their password in their
-              next logon.
-        type: bool
-        default: false
-    domain_name:
-        description:
-            - The name of the user domain.
-        type: str
-    member_type:
-        description:
-            - The type of member.
-        type: str
-    expiry_date:
-        description:
-            - The date and time when the user account will expire and become
-              disabled.
-        type: str
-    user_type_name:
-        description:
-            - The type of user.
-            - The parameter defaults to C(EPVUser).
-        type: str
-    enable_user:
-        description:
-            - Whether or not the user will be disabled.
-        type: bool
-        default: false
-    location:
-        description:
-            - The Vault Location for the user.
-        type: str
-    group_name:
-        description:
-            - The name of the group the user will be added to.
-            - Causes an additional lookup in cyberark
-            - Will be ignored if vault_id is used
-            - Will cause a failure if group is missing or more than one group with that name exists
-        type: str
+            - The permissions that the user or group has on this Safe.
+        type: dict
+        elements: dict
+        suboptions:
+            useAccounts:
+                description:
+                    - Use accounts but cannot view passwords.
+                type: bool
+                default: false
+            retrieveAccounts:
+                description:
+                    - Retrieve and view accounts in the Safe.
+                type: bool
+                default: false
+            listAccounts:
+                description:
+                    - View accounts list.
+                type: bool
+                default: false
+            addAccounts:
+                description:
+                    - Add accounts in the Safe.
+                type: bool
+                default: false
+            updateAccountContent:
+                description:
+                    - Update existing account content.
+                type: bool
+                default: false
+            updateAccountProperties:
+                description:
+                    - Update existing account properties.
+                type: bool
+                default: false
+            initiateCPMAccountManagementOperations:
+                description:
+                    - Initiate password management operations through CPM such as changing, verifying, and reconciling passwords.
+                type: bool
+                default: false
+            specifyNextAccountContent:
+                description:
+                    - Specify the password that is used when the CPM changes the password value.
+                    - This parameter can only be specified when the InitiateCPMAccountManagementOperations
+                      parameter is set to True.
+                type: bool
+                default: false
+            renameAccounts:
+                description:
+                    - Rename existing accounts in the Safe.
+                type: bool
+                default: false
+            deleteAccounts:
+                description:
+                    - Delete existing passwords in the Safe.
+                type: bool
+                default: false
+            unlockAccounts:
+                description:
+                    - Unlock accounts that are locked by other users.
+                type: bool
+                default: false
+            manageSafe:
+                description:
+                    - Perform administrative tasks in the Safe, including:
+                    - Update Safe properties
+                    - Recover the Safe
+                    - Delete the Safe
+                type: bool
+                default: false
+            manageSafeMembers:
+                description:
+                    - Add and remove Safe members, and update their authorizations in the Safe.
+                type: bool
+                default: false
+            backupSafe:
+                description:
+                    - Create a backup of a Safe and its contents, and store it in another location.
+                type: bool
+                default: false
+            viewAuditLog:
+                description:
+                    - View account and user activity in the Safe.
+                type: bool
+                default: false
+            viewSafeMembers:
+                description:
+                    - View permissions of Safe members.
+                type: bool
+                default: false
+            requestsAuthorizationLevel1:
+                description:
+                    - Request Authorization Level 1.
+                type: bool
+                default: false
+            requestsAuthorizationLevel2:
+                description:
+                    - Request Authorization Level 2.
+                type: bool
+                default: false
+            accessWithoutConfirmation:
+                description:
+                    - Access the Safe without confirmation from authorized users. This overrides the Safe
+                      properties that specify that Safe members require confirmation to access the Safe.
+                type: bool
+                default: false
+            createFolders:
+                description:
+                    - Create folders in the Safe.
+                type: bool
+                default: false
+            deleteFolders:
+                description:
+                    - Delete folders in the Safe.
+                type: bool
+                default: false
+            moveAccountsAndFolders:
+                description:
+                    - Move accounts and folders in the Safe to different folders and subfolders.
+                type: bool
+                default: false
     timeout:
         description:
             - How long to wait for the server to send data before giving up
         type: float
         default: 10
-    vault_id:
-        description:
-            - The ID of the user group to add the user to
-            - Prefered over group_name
-        type: int
-    authorization:
-        description:
-            - A list of authorization options for this user.
-            - Options can include AddSafes and AuditUsers
-            - The default provides backwards compatability with older versions of the collection
-        type: list
-        elements: str
-        default:
-          - AddSafes
-          - AuditUsers
-    business_address:
-        description:
-            - The user's postal address, including city, state, zip, country and street
-        type: dict
-    internet:
-        description:
-            - The user's email addresses, including home page and email, business and other email
-        type: dict
-    phones:
-        description:
-            - The user's phone numbers, including home, business, cellular, fax and pager
-        type: dict
-    description:
-        description:
-            - Notes and comments.
-        type: str
-    personalDetails:
-        description:
-            - The user's personal details including: 
-            - firstName, middleName, lastName, address
-            - city, state, zip, country
-            - title, organization, department, profession
-        type: dict
 """
 
 EXAMPLES = r"""
-- name: Logon to CyberArk Vault using PAS Web Services SDK
-  cyberark_authentication:
-    api_base_url: https://components.cyberark.local
-    use_shared_logon_authentication: true
-
-- name: Create user & immediately add it to a group
-  cyberark_user:
-    username: username
-    initial_password: password
-    user_type_name: EPVUser
-    change_password_on_the_next_logon: false
-    group_name: GroupOfUser
+- name: Add member
+    cyberark_safe_member:
+    api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
+    logging_level: DEBUG
+    safe_name: "Partner-Test"
+    member_name: "BD Tech"
+    permissions: 
+        useAccounts: True
+        retrieveAccounts: True
+        listAccounts: True
+        addAccounts: True
+        updateAccountContent: True
+        updateAccountProperties: True
+        initiateCPMAccountManagementOperations: True
+        specifyNextAccountContent: True
+        renameAccounts: True
+        deleteAccounts: True
+        unlockAccounts: True
+        manageSafe: True
+        manageSafeMembers: True
+        backupSafe: True
+        viewAuditLog: True
+        viewSafeMembers: True
+        requestsAuthorizationLevel1: True
+        requestsAuthorizationLevel2: False
+        accessWithoutConfirmation: True
+        createFolders: True
+        deleteFolders: True
+        moveAccountsAndFolders: True
+    cyberark_session: '{{ cyberark_session }}'
     state: present
-    cyberark_session: '{{ cyberark_session }}'
+    register: cyberark_result
 
-- name: Make sure user is present and reset user credential if present
-  cyberark_user:
-    username: Username
-    new_password: password
-    enable_user: false
-    state: present
-    cyberark_session: '{{ cyberark_session }}'
-
-- name: Logoff from CyberArk Vault
-  cyberark_authentication:
-    state: absent
-    cyberark_session: '{{ cyberark_session }}'
+- name: Show message
+    debug:
+    var: cyberark_result
 """
 
 RETURN = r"""
@@ -207,13 +257,13 @@ changed:
     description: Whether there was a change done.
     type: bool
     returned: always
-cyberark_user:
+cyberark_safe_member:
     description: Dictionary containing result properties.
     returned: always
     type: complex
     contains:
         result:
-            description: user properties when state is present
+            description: safe member properties and permissions
             type: dict
             returned: success
 status_code:
@@ -266,8 +316,6 @@ def safe_member_details(module):
     end_point = "/PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(psafename=quote(safe_name), pmembername=quote(member_name))
     url = construct_url(api_base_url, end_point)
 
-    logging.debug("URL for safe_member_details = " + url)
-
     headers = telemetryHeaders(cyberark_session)
     logging.info(headers)
 
@@ -311,8 +359,6 @@ def safe_member_details(module):
             status_code=-1,
         )
 
-
-
 def safe_member_add_or_update(module, HTTPMethod, existing_info):
 
     # Get safename from module parameters, and api base url
@@ -344,35 +390,21 @@ def safe_member_add_or_update(module, HTTPMethod, existing_info):
     if "permissions" in module.params and module.params["permissions"] is not None:
         payload["permissions"] = module.params["permissions"]
 
-    if "is_read_only" in module.params and module.params["is_read_only"] is not None:
-        payload["isReadOnly"] = module.params["is_read_only"]
-
-    if "member_type" in module.params and module.params["member_type"] is not None:
-        payload["memberType"] = module.params["member_type"]
-
     # --------------------------------------------------------------
-    logging.debug(
-        "HTTPMethod = " + HTTPMethod + " module.params = " + json.dumps(module.params)
-    )
-    logging.debug("Existing Info: %s", json.dumps(existing_info))
-    logging.debug("payload => %s", json.dumps(payload))
-
     if HTTPMethod == "PUT":
         logging.info("Verifying if needs to be updated")
         proceed = False
         updateable_fields = [
             "membershipExpirationDate",
             "permissions",
-            "isReadOnly",
         ]
         for field_name in updateable_fields:
-            logging.debug("#### field_name : %s", field_name)
             if (
                 field_name in payload
                 and field_name in existing_info
                 and payload[field_name] != existing_info[field_name]
             ):
-                logging.debug("Changing value for %s", field_name)
+                logging.info("Changing value for %s", field_name)
                 proceed = True
                 break
 
@@ -442,8 +474,6 @@ def safe_member_delete(module):
     end_point = "PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(psafename=quote(safe_name), pmembername=quote(member_name))
     headers = telemetryHeaders(cyberark_session)
     url = construct_url(api_base_url, end_point)
-
-    logging.debug("DELETE URL: " + url)
 
     try:
 
@@ -527,8 +557,6 @@ def main():
                                 moveAccountsAndFolders=dict(type="bool", default=False)
                             )
                         ),
-            is_read_only=dict(type="bool", default=False),
-            member_type=dict(type="str", choices=["User", "Group", "Role"], default="User"),
             logging_level=dict(
                 type="str", choices=["NOTSET", "DEBUG", "INFO"]
             ),
@@ -550,8 +578,6 @@ def main():
 
     if state == "present":
         (changed, result, status_code) = safe_member_details(module)
-        logging.debug("After safe_member_Details: status_code = " + str(status_code) + "  \nresult=" + json.dumps(result))
-
         if status_code == 200:
             # Safe already exists
             (changed, result, status_code) = safe_member_add_or_update(
