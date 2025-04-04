@@ -231,8 +231,10 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
+from urllib.parse import urlencode
 from ansible.module_utils.six.moves.urllib.parse import quote
 import logging
+import copy
 
 
 def construct_url(api_base_url, end_point):
@@ -249,20 +251,20 @@ def telemetryHeaders(session = None):
         headers["Authorization"] = "Bearer " + session["access_token"]
     return headers
 
-
-def safe_details(module):
-
-    # Get safename from module parameters, and api base url
+def platform_details_for_class(base_result, module):
+    # Get platform_id from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
-    safe_name = module.params["safe_name"]
+    platform_id = module.params["platform_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
+    platform_class = module.params["platform_class"]
     validate_certs = False
+    platform_name = base_result["Details"]["PolicyName"]
 
     # Prepare result, end_point, and headers
     result = {}
 
-    end_point = "/PasswordVault/api/Safes/{psafename}".format(psafename=quote(safe_name))
+    end_point = "/PasswordVault/api/Platforms/{pplatformclass}s?search={pplatformname}".format(pplatformclass=quote(platform_class), pplatformname=quote(platform_name))
     url = construct_url(api_base_url, end_point)
 
     headers = telemetryHeaders(cyberark_session)
@@ -277,7 +279,91 @@ def safe_details(module):
             validate_certs=validate_certs,
             timeout=module.params['timeout'],
         )
-        result = {"result": json.loads(response.read())}
+        platforms = json.loads(response.read())["Platforms"]
+        found = False
+        for platform in platforms:
+            if platform["PlatformID"] == platform_id:
+                found = True
+                result = platform
+                break
+
+        return (found, result, response.getcode())
+
+    except (HTTPError, httplib.HTTPException) as http_exception:
+
+        if http_exception.code == 404:
+            return (False, None, http_exception.code)
+        else:
+            module.fail_json(
+                msg=(
+                    "Error while performing platform_details_for_class."
+                    "Please validate parameters provided."
+                    "\n*** end_point=%s\n ==> %s"
+                    % (url, to_text(http_exception))
+                ),
+                headers=headers,
+                status_code=http_exception.code,
+            )
+
+    except Exception as unknown_exception:
+
+        module.fail_json(
+            msg=(
+                "Unknown error while performing platform_details_for_class."
+                "\n*** end_point=%s\n%s"
+                % (url, to_text(unknown_exception))
+            ),
+            headers=headers,
+            status_code=-1,
+        )
+
+
+def platform_details(module, error_if_details_not_found=True):
+
+    # Get platform_id from module parameters, and api base url
+    # along with validate_certs from the cyberark_session established
+    platform_id = module.params["platform_id"]
+    cyberark_session = module.params["cyberark_session"]
+    api_base_url = module.params["api_base_url"]
+    validate_certs = False
+
+    # Prepare result, end_point, and headers
+    result = {}
+
+    end_point = "/PasswordVault/api/Platforms/{pplatformid}".format(pplatformid=quote(platform_id))
+    url = construct_url(api_base_url, end_point)
+
+    headers = telemetryHeaders(cyberark_session)
+    logging.info(headers)
+
+    try:
+
+        response = open_url(
+            url,
+            method="GET",
+            headers=headers,
+            validate_certs=validate_certs,
+            timeout=module.params['timeout'],
+        )
+        base_result = json.loads(response.read())
+        result = {"result" : {"platform_base" : base_result}}
+
+        if module.params["platform_class"] != "general":
+            (found, platform_details, response_code) = platform_details_for_class(base_result, module)
+            if found:
+                result["result"]["platform_class"] = module.params["platform_class"]
+                result["result"]["class_platform_details"] = platform_details
+            else:
+                if error_if_details_not_found:
+                    # If the platform class is not found, fail the module
+                    # with a message
+                    module.fail_json(
+                        msg=(
+                            "Platform details for class %s and ID %s not found."
+                            % (module.params["platform_class"], platform_id)
+                        ),
+                    )
+
         return (False, result, response.getcode())
 
     except (HTTPError, httplib.HTTPException) as http_exception:
@@ -287,7 +373,7 @@ def safe_details(module):
         else:
             module.fail_json(
                 msg=(
-                    "Error while performing safe_details."
+                    "Error while performing platform_details."
                     "Please validate parameters provided."
                     "\n*** end_point=%s\n ==> %s"
                     % (url, to_text(http_exception))
@@ -300,7 +386,7 @@ def safe_details(module):
 
         module.fail_json(
             msg=(
-                "Unknown error while performing safe_details."
+                "Unknown error while performing platform_details."
                 "\n*** end_point=%s\n%s"
                 % (url, to_text(unknown_exception))
             ),
@@ -308,204 +394,235 @@ def safe_details(module):
             status_code=-1,
         )
 
-
-
-def safe_add_or_update(module, HTTPMethod, existing_info):
-
-    # Get safename from module parameters, and api base url
+def platform_class_update(module, existing_info):
+    # Get platform_id from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
-    safe_name = module.params["safe_name"]
+    internal_id = existing_info["class_platform_details"]["ID"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
+    platform_class = module.params["platform_class"]
     validate_certs = False
 
-    # Prepare result, paylod, and headers
-    result = {}
-    payload = {"safeName": safe_name}
+    # Prepare end_point, and headers
     end_point = ""
-    headers = telemetryHeaders(cyberark_session)
+    if existing_info["class_platform_details"]["Active"] == False and module.params["state"] == "active":
+        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/activate/".format(pplatformclass=quote(platform_class), pinternalid=internal_id)
+    elif existing_info["class_platform_details"]["Active"] == True and module.params["state"] == "inactive":
+        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/deactivate/".format(pplatformclass=quote(platform_class), pinternalid=internal_id)
 
-    # end_point and payload sets different depending on POST/PUT
-    # for POST -- create -- payload contains safename
-    # for PUT -- update -- safename is part of the endpoint
-    if HTTPMethod == "POST":
-        end_point = "PasswordVault/api/Safes"
-    elif HTTPMethod == "PUT":
-        end_point = "PasswordVault/api/Safes/{psafename}".format(psafename=quote(safe_name))
+    logging.info("**ENDPOINT=" + end_point)
+    if end_point != "":
 
-    # --- Optionally populate payload based on parameters passed ---
-    if "description" in module.params and module.params["description"] is not None:
-        payload["description"] = module.params["description"]
+        url = construct_url(api_base_url, end_point)
 
-    if "location" in module.params and module.params["location"] is not None:
-        payload["Location"] = module.params["location"]
+        headers = telemetryHeaders(cyberark_session)
+        logging.info(headers)
 
-    if "managing_cpm" in module.params and module.params["managing_cpm"] is not None:
-        payload["managingCPM"] = module.params["managing_cpm"]
+        try:
 
-    if "number_of_versions_retention" in module.params and module.params["number_of_versions_retention"] is not None:
-        payload["numberOfVersionsRetention"] = module.params["number_of_versions_retention"]
+            open_url(
+                url,
+                method="POST",
+                headers=headers,
+                validate_certs=validate_certs,
+                timeout=module.params['timeout'],
+            )
+            (changed, result, response_code) = platform_details(module)
+            changed = True
+            return (changed, result, response_code)
 
-    if "number_of_days_retention" in module.params and module.params["number_of_days_retention"] is not None:
-        payload["numberOfDaysRetention"] = module.params["number_of_days_retention"]
+        except (HTTPError, httplib.HTTPException) as http_exception:
 
-    if "auto_purge_enabled" in module.params and module.params["auto_purge_enabled"] is not None:
-        payload["AutoPurgeEnabled"] = module.params["auto_purge_enabled"]
+            if http_exception.code == 404:
+                return (False, None, http_exception.code)
+            else:
+                module.fail_json(
+                    msg=(
+                        "Error while performing platform_class_update."
+                        "Please validate parameters provided."
+                        "\n*** end_point=%s\n ==> %s"
+                        % (url, to_text(http_exception))
+                    ),
+                    headers=headers,
+                    status_code=http_exception.code,
+                )
 
+        except Exception as unknown_exception:
 
-    # --------------------------------------------------------------
-    logging.debug(
-        "HTTPMethod = " + HTTPMethod + " module.params = " + json.dumps(module.params)
-    )
-    logging.debug("Existing Info: %s", json.dumps(existing_info))
-    logging.debug("payload => %s", json.dumps(payload))
+            module.fail_json(
+                msg=(
+                    "Unknown error while performing platform_class_update."
+                    "\n*** end_point=%s\n%s"
+                    % (url, to_text(unknown_exception))
+                ),
+                headers=headers,
+                status_code=-1,
+            )
+    else:
+        logging.info("NO UPDATE on class platform")
+        return (False, {"result" : existing_info}, 200)
 
-    if HTTPMethod == "PUT":
-        logging.info("Verifying if needs to be updated")
-        proceed = False
-        updateable_fields = [
-            "description",
-            "location",
-            "managingCPM",
-            "numberOfVersionsRetention",
-            "numberOfDaysRetention",
-        ]
-        for field_name in updateable_fields:
-            logging.debug("#### field_name : %s", field_name)
-            if (
-                field_name in payload
-                and field_name in existing_info
-                and payload[field_name] != existing_info[field_name]
-            ):
-                logging.debug("Changing value for %s", field_name)
-                proceed = True
-                break
+def platform_class_duplicate(module):
+    # Get platform_id from module parameters, and api base url
+    # along with validate_certs from the cyberark_session established
+    cyberark_session = module.params["cyberark_session"]
+    api_base_url = module.params["api_base_url"]
+    platform_class = module.params["platform_class"]
+    validate_certs = False
+    duplicate_from_platform_id = module.params["duplicate_from_platform"]
+    duplicate_module = copy.deepcopy(module)
+    duplicate_module.params["platform_id"] = duplicate_from_platform_id
+    (changed, base_result, status_code) = platform_details(duplicate_module)
+    logging.info("duplicate " + str(status_code) + " result: " + json.dumps(base_result))
+    if status_code == 200: 
+        # found a base platform to duplicate from
+        duplicate_from_internal_id = base_result["result"]["class_platform_details"]["ID"]
+        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/duplicate/".format(pplatformclass=quote(platform_class), pinternalid=duplicate_from_internal_id)
+        payload_dict = {
+            "name": module.params["platform_id"],
+            "description": "Duplicated from " + duplicate_from_platform_id
+        }
+        payload = json.dumps(payload_dict)
+        logging.info("payload: " + payload)
+        url = construct_url(api_base_url, end_point)
+
+        headers = telemetryHeaders(cyberark_session)
+        logging.info(headers)
+
+        try:
+
+            open_url(
+                url,
+                method="POST",
+                headers=headers,
+                data=payload,
+                validate_certs=validate_certs,
+                timeout=module.params['timeout'],
+            )
+            (changed, new_result, status_code) = platform_details(module)
+            (changed, result, response_code) = platform_class_update(module, new_result["result"])
+            changed = True
+            return (changed, result, response_code)
+
+        except (HTTPError, httplib.HTTPException) as http_exception:
+
+            if http_exception.code == 404:
+                return (False, None, http_exception.code)
+            else:
+                module.fail_json(
+                    msg=(
+                        "Error while performing platform_class_duplicate."
+                        "Please validate parameters provided."
+                        "\n*** end_point=%s\n ==> %s"
+                        % (url, to_text(http_exception))
+                    ),
+                    headers=headers,
+                    status_code=http_exception.code,
+                )
+
+        except Exception as unknown_exception:
+
+            module.fail_json(
+                msg=(
+                    "Unknown error while performing platform_class_duplicate."
+                    "\n*** end_point=%s\n%s"
+                    % (url, to_text(unknown_exception))
+                ),
+                headers=headers,
+                status_code=-1,
+            )
 
     else:
-        proceed = True
+        module.fail_json(
+            msg=(
+                "ERROR: %s platform to duplicate from (%s) was not found"
+                % (platform_class, duplicate_from_platform_id)
+            ),
+        )
 
-    if proceed:
-        logging.info("Proceeding to either update or create")
+
+
+def platform_delete(module):
+
+    # Get platform_id from module parameters, and api base url
+    # along with validate_certs from the cyberark_session established
+    platform_id = module.params["platform_id"]
+    cyberark_session = module.params["cyberark_session"]
+    api_base_url = module.params["api_base_url"]
+    platform_class = module.params["platform_class"]
+    validate_certs = False
+    result = {}
+
+    (changed, result, status_code) = platform_details(module, error_if_details_not_found=False)
+    if status_code == 404:
+        # Platform does not exist, nothing to do
+        result = {"result": {}}
+        return (False, result, status_code)
+    elif status_code == 200:
+        internal_id = result["result"]["class_platform_details"]["ID"]
+
+        # Prepare end_point, and headers
+        end_point = "/PasswordVault/api/Platforms/{pplatformclass}s/{pinternalid}/".format(pplatformclass=quote(platform_class), pinternalid=internal_id)
+        headers = telemetryHeaders(cyberark_session)
         url = construct_url(api_base_url, end_point)
+
         try:
 
             # execute REST action
             response = open_url(
                 url,
-                method=HTTPMethod,
+                method="DELETE",
                 headers=headers,
-                data=json.dumps(payload),
                 validate_certs=validate_certs,
                 timeout=module.params['timeout'],
             )
 
-            result = {"result": json.loads(response.read())}
+            result = {"result": {}}
 
             return (True, result, response.getcode())
 
         except (HTTPError, httplib.HTTPException) as http_exception:
-            logging.info("response: " + http_exception.read().decode("utf-8"))
-            module.fail_json(
-                msg=(
-                    "Error while performing safe_add_or_update."
-                    "Please validate parameters provided."
-                    "\n*** end_point=%s\n ==> %s"
-                    % (url, to_text(http_exception))
-                ),
-                payload=payload,
-                headers=headers,
-                status_code=http_exception.code,
-            )
+
+            exception_text = to_text(http_exception)
+            if http_exception.code == 404 and "ITATS003E" in exception_text:
+                # Platform does not exist
+                result = {"result": {}}
+                return (False, result, http_exception.code)
+            else:
+                module.fail_json(
+                    msg=(
+                        "Error while performing platform_delete."
+                        "Please validate parameters provided."
+                        "\n*** end_point=%s\n ==> %s"
+                        % (url, exception_text)
+                    ),
+                    headers=headers,
+                    status_code=http_exception.code,
+                )
+
         except Exception as unknown_exception:
 
             module.fail_json(
                 msg=(
-                    "Unknown error while performing safe_add_or_update."
+                    "Unknown error while performing platform_delete."
                     "\n*** end_point=%s\n%s"
                     % (url, to_text(unknown_exception))
                 ),
-                payload=payload,
                 headers=headers,
                 status_code=-1,
             )
-    else:
-        return (False, existing_info, 200)
-
-
-def safe_delete(module):
-
-    # Get safename from module parameters, and api base url
-    # along with validate_certs from the cyberark_session established
-    safe_name = module.params["safe_name"]
-    cyberark_session = module.params["cyberark_session"]
-    api_base_url = module.params["api_base_url"]
-
-    # Prepare result, end_point, and headers
-    result = {}
-
-    end_point = "PasswordVault/api/Safes/{psafename}".format(psafename=quote(safe_name))
-    headers = telemetryHeaders(cyberark_session)
-    url = construct_url(api_base_url, end_point)
-
-    try:
-
-        # execute REST action
-        response = open_url(
-            url,
-            method="DELETE",
-            headers=headers,
-            #validate_certs=validate_certs,
-            timeout=module.params['timeout'],
-        )
-
-        result = {"result": {}}
-
-        return (True, result, response.getcode())
-
-    except (HTTPError, httplib.HTTPException) as http_exception:
-
-        exception_text = to_text(http_exception)
-        if http_exception.code == 404 and "ITATS003E" in exception_text:
-            # Safe does not exist
-            result = {"result": {}}
-            return (False, result, http_exception.code)
-        else:
-            module.fail_json(
-                msg=(
-                    "Error while performing safe_delete."
-                    "Please validate parameters provided."
-                    "\n*** end_point=%s\n ==> %s"
-                    % (url, exception_text)
-                ),
-                headers=headers,
-                status_code=http_exception.code,
-            )
-
-    except Exception as unknown_exception:
-
-        module.fail_json(
-            msg=(
-                "Unknown error while performing safe_delete."
-                "\n*** end_point=%s\n%s"
-                % (url, to_text(unknown_exception))
-            ),
-            headers=headers,
-            status_code=-1,
-        )
 
 
 def main():
 
     module = AnsibleModule(
         argument_spec=dict(
-            state=dict(type="str", default="present", choices=["absent", "present"]),
-            safe_name=dict(type="str", required=True),
-            description=dict(type="str"),
-            location=dict(type="str"),
-            managing_cpm=dict(type="str"),
-            number_of_versions_retention=dict(type="int"),
-            number_of_days_retention=dict(type="int", default=7),
-            auto_purge_enable=dict(type="bool", default=False),
+            state=dict(type="str", default="active", choices=["absent", "active", "inactive"]),
+            platform_id=dict(type="str", required=True),
+            duplicate_from_platform=dict(type="str"),
+            platform_class=dict(
+                type="str", choices=["target", "dependent", "group", "rotationalGroup"], default="target"
+            ),
             logging_level=dict(
                 type="str", choices=["NOTSET", "DEBUG", "INFO"]
             ),
@@ -525,19 +642,18 @@ def main():
 
     state = module.params["state"]
 
-    if state == "present":
-        (changed, result, status_code) = safe_details(module)
+    if state in ["active", "inactive"]:
+        (changed, result, status_code) = platform_details(module)
 
         if status_code == 200:
-            # Safe already exists
-            (changed, result, status_code) = safe_add_or_update(
-               module, "PUT", result["result"]
-            )
+            # Platform already exists
+            (changed, result, status_code) = platform_class_update(module, result["result"])
         elif status_code == 404:
-            # Safe does not exist, proceed to create it
-            (changed, result, status_code) = safe_add_or_update(module, "POST", None)
+            # Platform does not exist, proceed to create it if parameter duplicate_from_platform was specified
+            if module.params["duplicate_from_platform"] is not None:
+                (changed, result, status_code) = platform_class_duplicate(module)
     elif state == "absent":
-        (changed, result, status_code) = safe_delete(module)
+        (changed, result, status_code) = platform_delete(module)
 
     module.exit_json(changed=changed, cyberark_safe=result, status_code=status_code)
 

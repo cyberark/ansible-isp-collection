@@ -125,7 +125,6 @@ def processAuthentication(module):
     state = module.params["state"]
     timeout = module.params["timeout"]
 
-    payload = ""
     result = None
     changed = False
     response = None
@@ -135,7 +134,6 @@ def processAuthentication(module):
 
         end_point = api_base_url + "/oauth2/platformtoken"
         payload_dict = {"grant_type": grant_type, "client_id": client_id, "client_secret": client_secret}
-        payload = urlencode(payload_dict).encode("utf-8")
         headers = telemetryHeaders()
 
         try:
@@ -144,7 +142,7 @@ def processAuthentication(module):
                 end_point,
                 method="POST",
                 headers=headers,
-                data=payload,
+                data=urlencode(payload_dict).encode("utf-8"),
                 validate_certs=False,
                 timeout=timeout,
             )
@@ -158,7 +156,6 @@ def processAuthentication(module):
                     "CyberArk.\n*** end_point=%s\n ==> %s"
                 )
                 % (end_point, to_text(http_exception)),
-                payload=payload,
                 headers=headers,
                 status_code=http_exception.code,
             )
@@ -171,7 +168,6 @@ def processAuthentication(module):
                     "\n*** end_point=%s\n%s"
                     % (end_point, to_text(unknown_exception))
                 ),
-                payload=payload,
                 headers=headers,
                 status_code=-1,
             )
@@ -187,7 +183,6 @@ def processAuthentication(module):
                 except Exception as e:
                     module.fail_json(
                         msg="Error obtaining token\n%s" % (to_text(e)),
-                        payload=payload,
                         headers=headers,
                         status_code=-1,
                     )
@@ -196,7 +191,6 @@ def processAuthentication(module):
                 result = {
                     "cyberark_session": token
                 }
-
 
         else:
             module.fail_json(msg="error in end_point=>" + end_point, headers=headers)
