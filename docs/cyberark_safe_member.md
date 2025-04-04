@@ -192,8 +192,6 @@ options:
 ```
 ## Example Playbooks
 
-This playbook will check if application `Test_AppID` exists, if it does not, it will provision the application in the Vault. It will also make sure the application has different authentication methods.
-
 ```yaml
 - name: Logon 
   cyberark_authentication:

@@ -1,6 +1,6 @@
-# cyberark_safe
+# cyberark_platform
 
-This module allows admins to Add, Delete, and Modify CyberArk Safes.
+This module allows admins to manage platforms with the following actions: activate, deactivate, duplicate and delete.
 
 #### Available Fields
     
@@ -12,18 +12,30 @@ options:
               CyberArk's Privileged Cloud ISP SDK.
         type: str
         required: true
-    safe_name:
+    platform_id:
         description:
-            - The unique name of the Safe.
+            - The unique ID/Name of the platform.
         type: str
         required: true
+    duplicate_from_platform:
+        description:
+            - The unique ID/Name of the platform to duplicate from in case of a non-existing
+              platform and state is specified as active or inactive.
+        type: str
+        required: false
+    platform_class:
+        description:
+            - The class/kind of platform.
+        choices: [ target, dependent, group, rotationalGroup ]
+        default: target
+        type: str
+        required: false
     state:
         description:
-            - Specifies the state needed for the user present for create user,
-              absent for delete user.
+            - Specifies the state needed for the platform. Either active, inactive or absent.
         type: str
-        choices: [ absent, present ]
-        default: present
+        choices: [ active, inactive, absent]
+        default: active
     logging_level:
         description:
             - Parameter used to define the level of troubleshooting output to
@@ -46,39 +58,16 @@ options:
               example of cyberark_session.
         type: dict
         required: true
-    description:
-        description:
-            - The description of the Safe.
-        type: str
-    location:
-        description:
-            - The location of the Safe in the Vault.
-        type: str
-    managing_cpm:
-        description:
-            - The name of the CPM user who will manage the new Safe.
-        type: str
-    number_of_versions_retention:
-        description:
-            - The number of retained versions of every password that is stored in the Safe.
-        type: int
-    number_of_days_retention:
-        description:
-            - The number of days that password versions are saved in the Safe.
-        type: int
-    auto_purge_enabled:
-        description:
-            - Whether or not to automatically purge files after the end of the Object History 
-              Retention Period defined in the Safe properties.
-        type: bool
-        default: false
     timeout:
         description:
             - How long to wait for the server to send data before giving up
         type: float
         default: 10
+        required: false
 ```
 ## Example Playbooks
+
+This playbook will check if platform `TEST-NEW` exists, if it does not, it will duplicate it from `TEST-BASE` platform. It will also make sure the platform is active (updating it if needed).
 
 ```yaml
 - name: Logon 
@@ -87,16 +76,15 @@ options:
     client_id: "{{ password_object.password }}"
     client_secret: "{{ password_object.passprops.username }}"
 
-- name: Safe
-    cyberark_safe:
+- name: Platform
+  cyberark_platform:
     api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
-    description: "Safe for Partner Test"
     logging_level: DEBUG
-    safe_name: "Partner-Test"
-    number_of_days_retention: 7
-    state: present
+    platform_id: "TEST-NEW"
+    duplicate_from_platform: "TEST-BASE"
+    state: active
     cyberark_session: '{{ cyberark_session }}'
-    register: cyberark_result
+  register: cyberark_result
 
 - name: Logoff from CyberArk Vault
   cyberark_authentication:
