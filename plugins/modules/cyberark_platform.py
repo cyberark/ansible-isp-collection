@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2025, Ansible Project
+# Copyright: (c) 2017, Ansible Project
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import (absolute_import, division, print_function)
@@ -17,7 +17,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = r"""
 ---
-module: cyberark_platform
+module: cyberark_safe
 short_description: CyberArk User Management using PAS Web Services SDK.
 author:
   - Edward Nunez (@enunez-cyberark)
@@ -29,36 +29,19 @@ description:
       Update User, Delete User.
 
 options:
-    api_base_url:
+    username:
         description:
-            - A string containing the base URL of the server hosting
-              CyberArk's Privileged Cloud ISP SDK.
+            - The name of the user who will be queried (for details), added,
+              updated or deleted.
         type: str
         required: true
-    platform_id:
-        description:
-            - The unique ID/Name of the platform.
-        type: str
-        required: true
-    duplicate_from_platform:
-        description:
-            - The unique ID/Name of the platform to duplicate from in case of a non-existing
-              platform and state is specified as active or inactive.
-        type: str
-        required: false
-    platform_class:
-        description:
-            - The class/kind of platform.
-        choices: [ target, dependent, group, rotationalGroup ]
-        default: target
-        type: str
-        required: false
     state:
         description:
-            - Specifies the state needed for the platform. Either active, inactive or absent.
+            - Specifies the state needed for the user present for create user,
+              absent for delete user.
         type: str
-        choices: [ active, inactive, absent]
-        default: active
+        choices: [ absent, present ]
+        default: present
     logging_level:
         description:
             - Parameter used to define the level of troubleshooting output to
@@ -81,24 +64,142 @@ options:
               example of cyberark_session.
         type: dict
         required: true
+    initial_password:
+        description:
+            - The password that the new user will use to log on the first time.
+            - This password must meet the password policy requirements.
+            - This parameter is required when state is present -- Add User.
+        type: str
+    new_password:
+        description:
+            - The user updated password. Make sure that this password meets
+              the password policy requirements.
+        type: str
+    email:
+        description:
+            - The user email address.
+        type: str
+    first_name:
+        description:
+            - The user first name.
+        type: str
+    last_name:
+        description:
+            - The user last name.
+        type: str
+    change_password_on_the_next_logon:
+        description:
+            - Whether or not the user must change their password in their
+              next logon.
+        type: bool
+        default: false
+    domain_name:
+        description:
+            - The name of the user domain.
+        type: str
+    member_type:
+        description:
+            - The type of member.
+        type: str
+    expiry_date:
+        description:
+            - The date and time when the user account will expire and become
+              disabled.
+        type: str
+    user_type_name:
+        description:
+            - The type of user.
+            - The parameter defaults to C(EPVUser).
+        type: str
+    enable_user:
+        description:
+            - Whether or not the user will be disabled.
+        type: bool
+        default: false
+    location:
+        description:
+            - The Vault Location for the user.
+        type: str
+    group_name:
+        description:
+            - The name of the group the user will be added to.
+            - Causes an additional lookup in cyberark
+            - Will be ignored if vault_id is used
+            - Will cause a failure if group is missing or more than one group with that name exists
+        type: str
     timeout:
         description:
             - How long to wait for the server to send data before giving up
         type: float
         default: 10
-        required: false
+    vault_id:
+        description:
+            - The ID of the user group to add the user to
+            - Prefered over group_name
+        type: int
+    authorization:
+        description:
+            - A list of authorization options for this user.
+            - Options can include AddSafes and AuditUsers
+            - The default provides backwards compatability with older versions of the collection
+        type: list
+        elements: str
+        default:
+          - AddSafes
+          - AuditUsers
+    business_address:
+        description:
+            - The user's postal address, including city, state, zip, country and street
+        type: dict
+    internet:
+        description:
+            - The user's email addresses, including home page and email, business and other email
+        type: dict
+    phones:
+        description:
+            - The user's phone numbers, including home, business, cellular, fax and pager
+        type: dict
+    description:
+        description:
+            - Notes and comments.
+        type: str
+    personalDetails:
+        description:
+            - The user's personal details including: 
+            - firstName, middleName, lastName, address
+            - city, state, zip, country
+            - title, organization, department, profession
+        type: dict
 """
 
 EXAMPLES = r"""
-- name: Platform
-    cyberark_platform:
-    api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
-    logging_level: DEBUG
-    platform_id: "TEST-NEW"
-    duplicate_from_platform: "TEST-BASE"
-    state: active
+- name: Logon to CyberArk Vault using PAS Web Services SDK
+  cyberark_authentication:
+    api_base_url: https://components.cyberark.local
+    use_shared_logon_authentication: true
+
+- name: Create user & immediately add it to a group
+  cyberark_user:
+    username: username
+    initial_password: password
+    user_type_name: EPVUser
+    change_password_on_the_next_logon: false
+    group_name: GroupOfUser
+    state: present
     cyberark_session: '{{ cyberark_session }}'
-    register: cyberark_result
+
+- name: Make sure user is present and reset user credential if present
+  cyberark_user:
+    username: Username
+    new_password: password
+    enable_user: false
+    state: present
+    cyberark_session: '{{ cyberark_session }}'
+
+- name: Logoff from CyberArk Vault
+  cyberark_authentication:
+    state: absent
+    cyberark_session: '{{ cyberark_session }}'
 """
 
 RETURN = r"""
@@ -106,7 +207,7 @@ changed:
     description: Whether there was a change done.
     type: bool
     returned: always
-cyberark_platform:
+cyberark_user:
     description: Dictionary containing result properties.
     returned: always
     type: complex
@@ -115,17 +216,6 @@ cyberark_platform:
             description: user properties when state is present
             type: dict
             returned: success
-            elements: dict
-            suboptions:
-                platform_base:
-                    description: Platform properties
-                    type: complex
-                class_platform_details:
-                    description: Properties for the class platform
-                    type: complex
-                platform_class:
-                    description: Platform class
-                    type: str
 status_code:
     description: Result HTTP Status code
     returned: success
@@ -456,6 +546,7 @@ def platform_delete(module):
 
     # Get platform_id from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
+    platform_id = module.params["platform_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     platform_class = module.params["platform_class"]
@@ -564,7 +655,7 @@ def main():
     elif state == "absent":
         (changed, result, status_code) = platform_delete(module)
 
-    module.exit_json(changed=changed, cyberark_platform=result, status_code=status_code)
+    module.exit_json(changed=changed, cyberark_safe=result, status_code=status_code)
 
 if __name__ == "__main__":
     main()

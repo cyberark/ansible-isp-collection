@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2025, Ansible Project
+# Copyright: (c) 2017, Ansible Project
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import (absolute_import, division, print_function)
@@ -364,54 +364,57 @@ def authentication_method_process(module, existing_info) -> bool:
     headers = telemetryHeaders(cyberark_session)
 
     # Verify if Authentication Methods have to be updated
-    existing_authentication = existing_info["authentication"]
     authentication = module.params["authentication"]
-    logging.info("existing_authentication: " + json.dumps(existing_authentication))
     logging.info("authentication: " + json.dumps(authentication))
     updated = False
-    existing_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in existing_authentication)
-    new_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in authentication)
+    existing_set = set()
+    if existing_info is not None and "authentication" in existing_info:
 
-    for auth in existing_authentication:
-        if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in new_set):
-            logging.info("EXISTING COMBINATION TO REMOVE: " + json.dumps(auth))
-            delete_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/{pauthid}/".format(pappid=quote(app_id),pauthid=auth["authID"])
-            delete_url = construct_url(api_base_url, delete_end_point)
-            try:
-                # execute REST action
-                open_url(
-                    delete_url,
-                    method="DELETE",
-                    headers=headers,
-                    data=None,
-                    validate_certs=validate_certs,
-                    timeout=module.params['timeout'],
-                )
-                updated = True
+        existing_authentication = existing_info["authentication"]
+        logging.info("existing_authentication: " + json.dumps(existing_authentication))
+        existing_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in existing_authentication)
+        new_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in authentication)
 
-            except (HTTPError, httplib.HTTPException) as http_exception:
-                logging.info("response: " + http_exception.read().decode("utf-8"))
-                module.fail_json(
-                    msg=(
-                        "Error while performing action on authentication_method."
-                        "Please validate parameters provided."
-                        "\n*** end_point=%s\n ==> %s"
-                        % (delete_url, to_text(http_exception))
-                    ),
-                    headers=headers,
-                    status_code=http_exception.code,
-                )
-            except Exception as unknown_exception:
+        for auth in existing_authentication:
+            if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in new_set):
+                logging.info("EXISTING COMBINATION TO REMOVE: " + json.dumps(auth))
+                delete_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/{pauthid}/".format(pappid=quote(app_id),pauthid=auth["authID"])
+                delete_url = construct_url(api_base_url, delete_end_point)
+                try:
+                    # execute REST action
+                    open_url(
+                        delete_url,
+                        method="DELETE",
+                        headers=headers,
+                        data=None,
+                        validate_certs=validate_certs,
+                        timeout=module.params['timeout'],
+                    )
+                    updated = True
 
-                module.fail_json(
-                    msg=(
-                        "Unknown error while performing action on authentication_method."
-                        "\n*** end_point=%s\n%s"
-                        % (delete_url, to_text(unknown_exception))
-                    ),
-                    headers=headers,
-                    status_code=-1,
-                )
+                except (HTTPError, httplib.HTTPException) as http_exception:
+                    logging.info("response: " + http_exception.read().decode("utf-8"))
+                    module.fail_json(
+                        msg=(
+                            "Error while performing action on authentication_method."
+                            "Please validate parameters provided."
+                            "\n*** end_point=%s\n ==> %s"
+                            % (delete_url, to_text(http_exception))
+                        ),
+                        headers=headers,
+                        status_code=http_exception.code,
+                    )
+                except Exception as unknown_exception:
+
+                    module.fail_json(
+                        msg=(
+                            "Unknown error while performing action on authentication_method."
+                            "\n*** end_point=%s\n%s"
+                            % (delete_url, to_text(unknown_exception))
+                        ),
+                        headers=headers,
+                        status_code=-1,
+                    )
 
     for auth in authentication:
         if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in existing_set):
@@ -575,7 +578,7 @@ def application_add_or_update(module, HTTPMethod, existing_info):
     else:
         proceed = True
 
-    updated = authentication_method_process(module, existing_info)
+    updated = False
     response_code = 0
 
     if proceed:
@@ -593,6 +596,7 @@ def application_add_or_update(module, HTTPMethod, existing_info):
                 timeout=module.params['timeout'],
             )
 
+            authentication_method_process(module, existing_info)
             updated = True
             response_code = response.status
 

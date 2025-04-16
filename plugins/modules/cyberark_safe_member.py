@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2025, Ansible Project
+# Copyright: (c) 2017, Ansible Project
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import (absolute_import, division, print_function)
@@ -365,13 +365,14 @@ def safe_member_add_or_update(module, HTTPMethod, existing_info):
     # along with validate_certs from the cyberark_session established
     safe_name = module.params["safe_name"]
     member_name = module.params["member_name"]
+    member_type = module.params["member_type"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = False
 
     # Prepare result, paylod, and headers
     result = {}
-    payload = {"safeName": safe_name, "memberName": member_name}
+    payload = {"safeName": safe_name, "memberName": member_name, "memberType": member_type}
     end_point = ""
     headers = telemetryHeaders(cyberark_session)
 
@@ -557,6 +558,7 @@ def main():
                                 moveAccountsAndFolders=dict(type="bool", default=False)
                             )
                         ),
+            member_type=dict(type="str", choices=["User", "Group", "Role"], required=True),
             logging_level=dict(
                 type="str", choices=["NOTSET", "DEBUG", "INFO"]
             ),
