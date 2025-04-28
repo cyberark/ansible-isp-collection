@@ -2,21 +2,19 @@ Copyright (c) 2025 CyberArk Software Ltd. All rights reserved
 
 The CyberArk Ansible ISP Collection is using the following open source components:
 
-1.- Ansible General Module Utilities: Simplified BSD
+1) ansible / ansible / module_utils (https://github.com/ansible/ansible/tree/devel/lib/ansible/module_utils): Simplified BSD
+         Copyright (c), Michael DeHaan <michael.dehaan@gmail.com>, 2012-2013
+         Copyright (c), Toshio Kuratomi <tkuratomi@ansible.com> 2016
 
-2.- Ansible Utilities for writing code that runs on Python 2 and 3: MIT License
+2) ansible / ansible / module_utils / six (https://github.com/ansible/ansible/blob/devel/lib/ansible/module_utils/six/__init__.py): MIT License
+         Copyright (c) 2010-2020 Benjamin Peterson
 
-3.- Python (https://github.com/python/cpython) : Python Software Foundation License Version 2
+3) python / cpython (https://github.com/python/cpython): Python Software Foundation License Version 2
+         Copyright © 2001 Python Software Foundation. All rights reserved.
 
+=================================================================================
 
-1. Ansible General Module Utilities (Simplified BSD)
-======================================================
-https://github.com/ansible/ansible/blob/devel/licenses/simplified_bsd.txt
-
-For the following references:
-https://github.com/ansible/ansible/blob/devel/lib/ansible/module_utils/_text.py
-https://github.com/ansible/ansible/blob/devel/lib/ansible/module_utils/basic.py
-https://github.com/ansible/ansible/blob/devel/lib/ansible/module_utils/urls.py
+1) Simplified BSD License
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -27,12 +25,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-2.- Ansible Utilities for writing code that runs on Python 2 and 3: MIT License
-==================================================================================
-https://github.com/ansible/ansible/blob/devel/licenses/MIT-license.txt
-
-For the following reference:
-https://github.com/ansible/ansible/blob/devel/lib/ansible/module_utils/six/__init__.py
+2) MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -49,8 +42,8 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-3.- Python Software Foundation License Version 2
-==================================================
+
+3) Python Software Foundation License Version 2
 
 A. HISTORY OF THE SOFTWARE
 ==========================
