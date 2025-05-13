@@ -1,29 +1,23 @@
 ---
-- hosts: localhost
-
-  collections:
-    - cyberark.isp
+- name: User
+  hosts: localhost
 
   tasks:
 
     - name: Logon to CyberArk Vault using ISP Authentication
-      cyberark_authentication:
+      cyberark.isp.cyberark_authentication:
         api_base_url: "https://tenant.id.cyberark.cloud"
         client_id: "userdemo"
         client_secret: "password"
 
-    - name: Show cyberark session
-      debug:
-        var: cyberark_session
-
     - name: User
-      cyberark_user:
+      cyberark.isp.cyberark_user:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         logging_level: DEBUG
         username: test
         initial_password: Cyberark1
         state: present
-        enable_user: True
+        enable_user: true
         group_name: Vault Admins
         business_address:
           workCity: Fremont
@@ -42,5 +36,5 @@
       register: cyberark_result
 
     - name: Show message
-      debug:
+      ansible.builtin.debug:
         var: cyberark_result

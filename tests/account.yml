@@ -1,25 +1,17 @@
 ---
-- hosts: localhost
-
-  collections:
-    - cyberark.isp
+- name: Test CyberArk ISP Collection
+  hosts: localhost
 
   tasks:
 
     - name: Logon to CyberArk Vault using ISP Authentication
-      cyberark_authentication:
+      cyberark.isp.cyberark_authentication:
         api_base_url: "https://tenant.id.cyberark.cloud"
-        client_id: "userdemo"
+        client_id: "client_id"
         client_secret: "password"
 
-    - name: Show cyberark session
-      debug:
-        var: cyberark_session
-
     - name: Account
-      cyberark_account:
-        logging_level: DEBUG
-        api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
+      cyberark.isp.cyberark_account:
         identified_by: "address,username"
         safe: "Partner-TEST"
         address: "cyberark.local"
@@ -38,5 +30,5 @@
       register: cyberark_account
 
     - name: Show account
-      debug:
+      ansible.builtin.debug:
         var: cyberark_account

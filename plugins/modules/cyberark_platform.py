@@ -6,7 +6,6 @@
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import (absolute_import, division, print_function)
 
-
 __metaclass__ = type
 
 ANSIBLE_METADATA = {
@@ -17,38 +16,51 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = r"""
 ---
-module: cyberark_safe
-short_description: CyberArk User Management using PAS Web Services SDK.
+module: cyberark_platform
+short_description: CyberArk Platform Management using PAS Web Services SDK.
 author:
   - Edward Nunez (@enunez-cyberark)
   - Cyberark Bizdev (@cyberark-bizdev)
 version_added: '1.0.0'
 description:
-    - CyberArk User Management using PAS Web Services SDK,
-      It currently supports the following actions Get User Details, Add User,
-      Update User, Delete User.
+    - CyberArk Platform Management using PAS Web Services SDK,
+      It supports activating and deactivating different platforms, along with duplicating and deleting them.
 
 options:
-    username:
+    api_base_url:
         description:
-            - The name of the user who will be queried (for details), added,
-              updated or deleted.
+            - The base URL for PVWA REST APIs.
         type: str
         required: true
+    platform_id:
+        description:
+            - The unique ID/Name of the platform.
+        type: str
+        required: true
+    duplicate_from_platform:
+        description:
+            - The unique ID/Name of the platform to duplicate from.
+        type: str
+        required: false
+    platform_class:
+        description:
+            - Class of the platform referenced.
+        type: str
+        choices: [target, dependent, group, rotationalGroup]
+        default: target
     state:
         description:
             - Specifies the state needed for the user present for create user,
               absent for delete user.
         type: str
-        choices: [ absent, present ]
-        default: present
+        choices: [absent, active, inactive]
+        default: active
     logging_level:
         description:
             - Parameter used to define the level of troubleshooting output to
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -64,142 +76,23 @@ options:
               example of cyberark_session.
         type: dict
         required: true
-    initial_password:
-        description:
-            - The password that the new user will use to log on the first time.
-            - This password must meet the password policy requirements.
-            - This parameter is required when state is present -- Add User.
-        type: str
-    new_password:
-        description:
-            - The user updated password. Make sure that this password meets
-              the password policy requirements.
-        type: str
-    email:
-        description:
-            - The user email address.
-        type: str
-    first_name:
-        description:
-            - The user first name.
-        type: str
-    last_name:
-        description:
-            - The user last name.
-        type: str
-    change_password_on_the_next_logon:
-        description:
-            - Whether or not the user must change their password in their
-              next logon.
-        type: bool
-        default: false
-    domain_name:
-        description:
-            - The name of the user domain.
-        type: str
-    member_type:
-        description:
-            - The type of member.
-        type: str
-    expiry_date:
-        description:
-            - The date and time when the user account will expire and become
-              disabled.
-        type: str
-    user_type_name:
-        description:
-            - The type of user.
-            - The parameter defaults to C(EPVUser).
-        type: str
-    enable_user:
-        description:
-            - Whether or not the user will be disabled.
-        type: bool
-        default: false
-    location:
-        description:
-            - The Vault Location for the user.
-        type: str
-    group_name:
-        description:
-            - The name of the group the user will be added to.
-            - Causes an additional lookup in cyberark
-            - Will be ignored if vault_id is used
-            - Will cause a failure if group is missing or more than one group with that name exists
-        type: str
     timeout:
         description:
             - How long to wait for the server to send data before giving up
         type: float
         default: 10
-    vault_id:
-        description:
-            - The ID of the user group to add the user to
-            - Prefered over group_name
-        type: int
-    authorization:
-        description:
-            - A list of authorization options for this user.
-            - Options can include AddSafes and AuditUsers
-            - The default provides backwards compatability with older versions of the collection
-        type: list
-        elements: str
-        default:
-          - AddSafes
-          - AuditUsers
-    business_address:
-        description:
-            - The user's postal address, including city, state, zip, country and street
-        type: dict
-    internet:
-        description:
-            - The user's email addresses, including home page and email, business and other email
-        type: dict
-    phones:
-        description:
-            - The user's phone numbers, including home, business, cellular, fax and pager
-        type: dict
-    description:
-        description:
-            - Notes and comments.
-        type: str
-    personalDetails:
-        description:
-            - The user's personal details including: 
-            - firstName, middleName, lastName, address
-            - city, state, zip, country
-            - title, organization, department, profession
-        type: dict
 """
 
 EXAMPLES = r"""
-- name: Logon to CyberArk Vault using PAS Web Services SDK
-  cyberark_authentication:
-    api_base_url: https://components.cyberark.local
-    use_shared_logon_authentication: true
-
-- name: Create user & immediately add it to a group
-  cyberark_user:
-    username: username
-    initial_password: password
-    user_type_name: EPVUser
-    change_password_on_the_next_logon: false
-    group_name: GroupOfUser
-    state: present
+- name: Platform
+  cyberark_platform:
+    api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
+    logging_level: DEBUG
+    platform_id: "TEST-NEW"
+    duplicate_from_platform: "TEST-BASE"
+    state: active
     cyberark_session: '{{ cyberark_session }}'
-
-- name: Make sure user is present and reset user credential if present
-  cyberark_user:
-    username: Username
-    new_password: password
-    enable_user: false
-    state: present
-    cyberark_session: '{{ cyberark_session }}'
-
-- name: Logoff from CyberArk Vault
-  cyberark_authentication:
-    state: absent
-    cyberark_session: '{{ cyberark_session }}'
+  register: cyberark_result
 """
 
 RETURN = r"""
@@ -222,34 +115,35 @@ status_code:
     type: int
     sample: 200
 """
-
-import json
 import base64
-
-from ansible.module_utils.basic import AnsibleModule
+import copy
+import json
+import logging
 from ansible.module_utils._text import to_text
+from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
-from ansible.module_utils.urls import open_url
-from urllib.parse import urlencode
 from ansible.module_utils.six.moves.urllib.parse import quote
-import logging
-import copy
+from ansible.module_utils.urls import open_url
 
 
 def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
-def telemetryHeaders(session = None):
+
+def telemetryHeaders(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
+        "x-cybr-telemetry": base64.b64encode(
+            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
+        ).decode("utf-8")
     }
 
     if session is not None:
         headers["Authorization"] = "Bearer " + session["access_token"]
     return headers
+
 
 def platform_details_for_class(base_result, module):
     # Get platform_id from module parameters, and api base url
@@ -264,7 +158,9 @@ def platform_details_for_class(base_result, module):
     # Prepare result, end_point, and headers
     result = {}
 
-    end_point = "/PasswordVault/api/Platforms/{pplatformclass}s?search={pplatformname}".format(pplatformclass=quote(platform_class), pplatformname=quote(platform_name))
+    end_point = "/PasswordVault/api/Platforms/{pplatformclass}s?search={pplatformname}".format(
+        pplatformclass=quote(platform_class), pplatformname=quote(platform_name)
+    )
     url = construct_url(api_base_url, end_point)
 
     headers = telemetryHeaders(cyberark_session)
@@ -346,7 +242,7 @@ def platform_details(module, error_if_details_not_found=True):
             timeout=module.params['timeout'],
         )
         base_result = json.loads(response.read())
-        result = {"result" : {"platform_base" : base_result}}
+        result = {"result": {"platform_base": base_result}}
 
         if module.params["platform_class"] != "general":
             (found, platform_details, response_code) = platform_details_for_class(base_result, module)
@@ -394,6 +290,7 @@ def platform_details(module, error_if_details_not_found=True):
             status_code=-1,
         )
 
+
 def platform_class_update(module, existing_info):
     # Get platform_id from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
@@ -405,12 +302,16 @@ def platform_class_update(module, existing_info):
 
     # Prepare end_point, and headers
     end_point = ""
-    if existing_info["class_platform_details"]["Active"] == False and module.params["state"] == "active":
-        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/activate/".format(pplatformclass=quote(platform_class), pinternalid=internal_id)
-    elif existing_info["class_platform_details"]["Active"] == True and module.params["state"] == "inactive":
-        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/deactivate/".format(pplatformclass=quote(platform_class), pinternalid=internal_id)
+    if existing_info["class_platform_details"]["Active"] is False and module.params["state"] == "active":
+        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/activate/".format(
+            pplatformclass=quote(platform_class), pinternalid=internal_id
+        )
+    elif existing_info["class_platform_details"]["Active"] is True and module.params["state"] == "inactive":
+        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/deactivate/".format(
+            pplatformclass=quote(platform_class), pinternalid=internal_id
+        )
 
-    logging.info("**ENDPOINT=" + end_point)
+    logging.info("**ENDPOINT=%s", end_point)
     if end_point != "":
 
         url = construct_url(api_base_url, end_point)
@@ -460,7 +361,8 @@ def platform_class_update(module, existing_info):
             )
     else:
         logging.info("NO UPDATE on class platform")
-        return (False, {"result" : existing_info}, 200)
+        return (False, {"result": existing_info}, 200)
+
 
 def platform_class_duplicate(module):
     # Get platform_id from module parameters, and api base url
@@ -473,17 +375,19 @@ def platform_class_duplicate(module):
     duplicate_module = copy.deepcopy(module)
     duplicate_module.params["platform_id"] = duplicate_from_platform_id
     (changed, base_result, status_code) = platform_details(duplicate_module)
-    logging.info("duplicate " + str(status_code) + " result: " + json.dumps(base_result))
-    if status_code == 200: 
+    logging.info("duplicate %s result: %s", str(status_code), json.dumps(base_result))
+    if status_code == 200:
         # found a base platform to duplicate from
         duplicate_from_internal_id = base_result["result"]["class_platform_details"]["ID"]
-        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/duplicate/".format(pplatformclass=quote(platform_class), pinternalid=duplicate_from_internal_id)
+        end_point = "/PasswordVault/api/platforms/{pplatformclass}s/{pinternalid}/duplicate/".format(
+            pplatformclass=quote(platform_class), pinternalid=duplicate_from_internal_id
+        )
         payload_dict = {
             "name": module.params["platform_id"],
             "description": "Duplicated from " + duplicate_from_platform_id
         }
         payload = json.dumps(payload_dict)
-        logging.info("payload: " + payload)
+        logging.info("payload: %s", payload)
         url = construct_url(api_base_url, end_point)
 
         headers = telemetryHeaders(cyberark_session)
@@ -541,7 +445,6 @@ def platform_class_duplicate(module):
         )
 
 
-
 def platform_delete(module):
 
     # Get platform_id from module parameters, and api base url
@@ -562,7 +465,9 @@ def platform_delete(module):
         internal_id = result["result"]["class_platform_details"]["ID"]
 
         # Prepare end_point, and headers
-        end_point = "/PasswordVault/api/Platforms/{pplatformclass}s/{pinternalid}/".format(pplatformclass=quote(platform_class), pinternalid=internal_id)
+        end_point = "/PasswordVault/api/Platforms/{pplatformclass}s/{pinternalid}/".format(
+            pplatformclass=quote(platform_class), pinternalid=internal_id
+        )
         headers = telemetryHeaders(cyberark_session)
         url = construct_url(api_base_url, end_point)
 
@@ -656,6 +561,7 @@ def main():
         (changed, result, status_code) = platform_delete(module)
 
     module.exit_json(changed=changed, cyberark_safe=result, status_code=status_code)
+
 
 if __name__ == "__main__":
     main()

@@ -118,8 +118,8 @@ options:
     authentication:
         description:
             - A list of authentication methods for the application.
-            - Options can include AddSafes and AuditUsers
-            - The default provides backwards compatability with older versions of the collection
+            - Options can include AddSafes and AuditUsers.
+            - The default provides backwards compatability with older versions of the collection.
         type: list
         elements: dict
         suboptions:
@@ -132,13 +132,8 @@ options:
                 description:
                     - The type of authentication.
                 type: str
-                choices:
-                    - path
-                    - osUser
-                    - hash
-                    - machineAddress
-                    - certificateSerialNumber
-                    - certificateAttr
+                required: true
+                choices: [path, osUser, hash, machineAddress, certificateSerialNumber, certificateAttr]
             AuthValue:
                 description:
                     - The content of the authentication.
@@ -155,13 +150,16 @@ options:
             Subject:
                 description:
                     - The content of the subject attribute for certificateAttr AuthType.
-                type: str
+                type: list
+                elements: str
             Issuer:
                 description: The content of the issuer attribute for certificateAttr AuthType.
-                type: str
+                type: list
+                elements: str
             SubjectAlternativeName:
                 description: The content of the subject alternative name attribute for certificateAttr AuthType.
-                type: str
+                type: list
+                elements: str
     timeout:
         description:
             - How long to wait for the server to send data before giving up
@@ -171,51 +169,47 @@ options:
 
 EXAMPLES = r"""
 - name: Application
-    cyberark_application:
+  cyberark.isp.cyberark_application:
     api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
     logging_level: DEBUG
     app_id: "EdwardTest_AppID"
     authentication:
-        - AuthType: path
+      - AuthType: path
         AuthValue: "/tmp"
-        IsFolder: True
-        - AuthType: path
+        IsFolder: true
+      - AuthType: path
         AuthValue: "/var/tmp"
-        IsFolder: True
-        AllowInternalScripts: True
-        - AuthType: path
+        IsFolder: true
+        AllowInternalScripts: true
+      - AuthType: path
         AuthValue: "/shr/apps"
-        IsFolder: True
-        AllowInternalScripts: True
-        - AuthType: osUser
+        IsFolder: true
+        AllowInternalScripts: true
+      - AuthType: osUser
         AuthValue: "Edward/Edward"
-        - AuthType: osUser
+      - AuthType: osUser
         AuthValue: "BizDevTech/Simon"
-        - AuthType: hash
+      - AuthType: hash
         AuthValue: "HASH123332223"
         Comment: "This is the hash for version 1"
-        - AuthType: machineAddress
+      - AuthType: machineAddress
         AuthValue: "2.2.2.2"
         Comment: "Set of address"
-        - AuthType: machineAddress
+      - AuthType: machineAddress
         AuthValue: "3.3.3.3"
-        - AuthType: certificateSerialNumber
+      - AuthType: certificateSerialNumber
         AuthValue: "1E8AB650DC258AE3"
         Comment: "Certificate for authentication"
-        - AuthType: certificateSerialNumber
+      - AuthType: certificateSerialNumber
         AuthValue: "2E8AB650DC258AE3"
         Comment: "Authentication 2"
-        - AuthType: certificateAttr
+      - AuthType: certificateAttr
         Issuer: "CN=Thawte RSA CA 2018,OU=www.digicert.com"
-        Subject: ["CN=yourcompany.com","OU=IT","C=IL"]
-        SubjectAlternativeName: ["DNS Name=www.example.com","IP Address=1.2.3.4"]
+        Subject: ["CN=yourcompany.com", "OU=IT", "C=IL"]
+        SubjectAlternativeName: ["DNS Name=www.example.com", "IP Address=1.2.3.4"]
     state: present
     cyberark_session: '{{ cyberark_session }}'
     register: cyberark_result
-
-- name: Show message
-    debug:
-    var: cyberark_result
 """
 
 RETURN = r"""
@@ -241,49 +235,47 @@ status_code:
 
 import json
 import base64
-
+import logging
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
 from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
 from ansible.module_utils.six.moves.urllib.parse import quote
-import logging
+
 
 def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
-def telemetryHeaders(session = None):
+
+def telemetry_headers(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
+        "x-cybr-telemetry": base64.b64encode(
+            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
+        ).decode("utf-8")
     }
 
     if session is not None:
         headers["Authorization"] = "Bearer " + session["access_token"]
     return headers
 
-def application_details(module):
 
-    # Get app_id from module parameters, and api base url
-    # along with the cyberark_session established
+def application_details(module):
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = False
 
-    # Prepare result, end_point, and headers
     result = {}
-
     end_point = "/PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}".format(pappid=quote(app_id))
     url = construct_url(api_base_url, end_point)
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = telemetry_headers(cyberark_session)
     logging.info(headers)
 
     try:
-
         response = open_url(
             url,
             method="GET",
@@ -292,7 +284,7 @@ def application_details(module):
             timeout=module.params['timeout'],
         )
         result = {"result": json.loads(response.read())["application"]}
-        # Get app authentication methods
+
         end_point = "/PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications".format(pappid=quote(app_id))
         url = construct_url(api_base_url, end_point)
         response = open_url(
@@ -304,13 +296,12 @@ def application_details(module):
         )
         auth_methods = json.loads(response.read())
         result["result"]["authentication"] = auth_methods["authentication"]
-        
-        return (False, result, response.getcode())
+
+        return False, result, response.getcode()
 
     except (HTTPError, httplib.HTTPException) as http_exception:
-
         if http_exception.code == 404:
-            return (False, None, http_exception.code)
+            return False, None, http_exception.code
         else:
             module.fail_json(
                 msg=(
@@ -324,7 +315,6 @@ def application_details(module):
             )
 
     except Exception as unknown_exception:
-
         module.fail_json(
             msg=(
                 "Unknown error while performing application_details."
@@ -335,12 +325,13 @@ def application_details(module):
             status_code=-1,
         )
 
+
 def key_for_auth_type(auth):
     key_value = ""
     if auth["AuthType"].lower() == "certificateattr":
         issuer = ""
         subject = ""
-        subjectAlternativeName = ""
+        subject_alternative_name = ""
         if "Issuer" in auth and auth["Issuer"] is not None:
             issuer = ", ".join(auth["Issuer"]) if isinstance(auth["Issuer"], list) else auth["Issuer"]
 
@@ -348,40 +339,43 @@ def key_for_auth_type(auth):
             subject = ", ".join(auth["Subject"]) if isinstance(auth["Subject"], list) else auth["Subject"]
 
         if "SubjectAlternativeName" in auth and auth["SubjectAlternativeName"] is not None:
-            subjectAlternativeName = ", ".join(auth["SubjectAlternativeName"]) if isinstance(auth["SubjectAlternativeName"], list) else auth["SubjectAlternativeName"]
-        
-        key_value = issuer + "-" + subject + "-" + subjectAlternativeName
+            if isinstance(auth["SubjectAlternativeName"], list):
+                subject_alternative_name = ", ".join(auth["SubjectAlternativeName"])
+            else:
+                subject_alternative_name = auth["SubjectAlternativeName"]
+
+        key_value = issuer + "-" + subject + "-" + subject_alternative_name
     else:
         key_value = auth["AuthValue"]
-    
+
     return key_value
+
 
 def authentication_method_process(module, existing_info) -> bool:
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = False
-    headers = telemetryHeaders(cyberark_session)
+    headers = telemetry_headers(cyberark_session)
 
-    # Verify if Authentication Methods have to be updated
     authentication = module.params["authentication"]
-    logging.info("authentication: " + json.dumps(authentication))
+    logging.info("authentication: %s", json.dumps(authentication))
     updated = False
     existing_set = set()
     if existing_info is not None and "authentication" in existing_info:
-
         existing_authentication = existing_info["authentication"]
-        logging.info("existing_authentication: " + json.dumps(existing_authentication))
-        existing_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in existing_authentication)
-        new_set = set((x["AuthType"].lower(),key_for_auth_type(x)) for x in authentication)
+        logging.info("existing_authentication: %s", json.dumps(existing_authentication))
+        existing_set = set((x["AuthType"].lower(), key_for_auth_type(x)) for x in existing_authentication)
+        new_set = set((x["AuthType"].lower(), key_for_auth_type(x)) for x in authentication)
 
         for auth in existing_authentication:
-            if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in new_set):
-                logging.info("EXISTING COMBINATION TO REMOVE: " + json.dumps(auth))
-                delete_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/{pauthid}/".format(pappid=quote(app_id),pauthid=auth["authID"])
+            if (auth["AuthType"].lower(), key_for_auth_type(auth)) not in new_set:
+                logging.info("EXISTING COMBINATION TO REMOVE: %s", json.dumps(auth))
+                delete_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/{pauthid}/".format(
+                    pappid=quote(app_id), pauthid=auth["authID"]
+                )
                 delete_url = construct_url(api_base_url, delete_end_point)
                 try:
-                    # execute REST action
                     open_url(
                         delete_url,
                         method="DELETE",
@@ -393,7 +387,7 @@ def authentication_method_process(module, existing_info) -> bool:
                     updated = True
 
                 except (HTTPError, httplib.HTTPException) as http_exception:
-                    logging.info("response: " + http_exception.read().decode("utf-8"))
+                    logging.info("Response: %s", http_exception.read().decode("utf-8"))
                     module.fail_json(
                         msg=(
                             "Error while performing action on authentication_method."
@@ -405,7 +399,6 @@ def authentication_method_process(module, existing_info) -> bool:
                         status_code=http_exception.code,
                     )
                 except Exception as unknown_exception:
-
                     module.fail_json(
                         msg=(
                             "Unknown error while performing action on authentication_method."
@@ -415,105 +408,93 @@ def authentication_method_process(module, existing_info) -> bool:
                         headers=headers,
                         status_code=-1,
                     )
+    if authentication is not None and len(authentication) > 0:
+        for auth in authentication:
+            if (auth["AuthType"].lower(), key_for_auth_type(auth)) not in existing_set:
+                logging.info("COMBINATION TO ADD: %s", json.dumps(auth))
+                auth_payload = {"AuthType": auth["AuthType"]}
+                if auth["AuthType"].lower() == "certificateattr":
+                    if "Issuer" in auth and auth["Issuer"] is not None:
+                        auth_payload["Issuer"] = auth["Issuer"]
 
-    for auth in authentication:
-        if ((auth["AuthType"].lower(), key_for_auth_type(auth)) not in existing_set):
-            logging.info("COMBINATION TO ADD: " + json.dumps(auth))
-            auth_payload = {"AuthType": auth["AuthType"]}
-            if auth["AuthType"].lower() == "certificateattr":
-                if "Issuer" in auth and auth["Issuer"] is not None:
-                    auth_payload["Issuer"] = auth["Issuer"]
+                    if "Subject" in auth and auth["Subject"] is not None:
+                        auth_payload["Subject"] = auth["Subject"]
 
-                if "Subject" in auth and auth["Subject"] is not None:
-                    auth_payload["Subject"] = auth["Subject"]
+                    if "SubjectAlternativeName" in auth and auth["SubjectAlternativeName"] is not None:
+                        auth_payload["SubjectAlternativeName"] = auth["SubjectAlternativeName"]
+                else:
+                    auth_payload["AuthValue"] = auth["AuthValue"]
 
-                if "SubjectAlternativeName" in auth and auth["SubjectAlternativeName"] is not None:
-                    auth_payload["SubjectAlternativeName"] = auth["SubjectAlternativeName"]
-            else:
-                auth_payload["AuthValue"] = auth["AuthValue"]
+                if auth["AuthType"].lower() in ["hash", "certificateserialnumber"]:
+                    if "Comment" in auth and auth["Comment"] is not None:
+                        auth_payload["Comment"] = auth["Comment"]
 
-            if auth["AuthType"].lower() in ["hash", "certificateserialnumber"]:
-                if "Comment" in auth and auth["Comment"] is not None:
-                    auth_payload["Comment"] = auth["Comment"]
-                
-            if auth["AuthType"] == "path":
-                if "IsFolder" in auth and auth["IsFolder"] is not None:
-                    auth_payload["IsFolder"] = auth["IsFolder"]
-                
-                if "AllowInternalScripts" in auth and auth["AllowInternalScripts"] is not None:
-                    auth_payload["AllowInternalScripts"] = auth["AllowInternalScripts"]
-                
-            add_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/".format(pappid=quote(app_id))
-            add_url = construct_url(api_base_url, add_end_point)
-            try:
-                logging.info("ADD_URL = " + add_url)
-                logging.info("auth_payload: " + json.dumps(auth_payload))
-                # execute REST action
-                open_url(
-                    add_url,
-                    method="POST",
-                    headers=headers,
-                    data=json.dumps({"authentication": auth_payload}),
-                    validate_certs=validate_certs,
-                    timeout=module.params['timeout'],
-                )
-                updated = True
+                if auth["AuthType"] == "path":
+                    if "IsFolder" in auth and auth["IsFolder"] is not None:
+                        auth_payload["IsFolder"] = auth["IsFolder"]
 
-            except (HTTPError, httplib.HTTPException) as http_exception:
-                logging.info("response: " + http_exception.read().decode("utf-8"))
-                module.fail_json(
-                    msg=(
-                        "Error while performing action on authentication_method."
-                        "Please validate parameters provided."
-                        "\n*** end_point=%s\n ==> %s"
-                        % (add_url, to_text(http_exception))
-                    ),
-                    payload=auth_payload,
-                    headers=headers,
-                    status_code=http_exception.code,
-                )
-            except Exception as unknown_exception:
+                    if "AllowInternalScripts" in auth and auth["AllowInternalScripts"] is not None:
+                        auth_payload["AllowInternalScripts"] = auth["AllowInternalScripts"]
 
-                module.fail_json(
-                    msg=(
-                        "Unknown error while performing action on authentication_method."
-                        "\n*** end_point=%s\n%s"
-                        % (add_url, to_text(unknown_exception))
-                    ),
-                    payload=auth_payload,
-                    headers=headers,
-                    status_code=-1,
-                )
-                
-        else:
-            pass # Possible UPDATE?
+                add_end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/Authentications/".format(pappid=quote(app_id))
+                add_url = construct_url(api_base_url, add_end_point)
+                try:
+                    logging.info("ADD_URL = %s", add_url)
+                    logging.info("auth_payload: %s", json.dumps(auth_payload))
+                    open_url(
+                        add_url,
+                        method="POST",
+                        headers=headers,
+                        data=json.dumps({"authentication": auth_payload}),
+                        validate_certs=validate_certs,
+                        timeout=module.params['timeout'],
+                    )
+                    updated = True
+
+                except (HTTPError, httplib.HTTPException) as http_exception:
+                    logging.info("response: %s", http_exception.read().decode("utf-8"))
+                    module.fail_json(
+                        msg=(
+                            "Error while performing action on authentication_method."
+                            "Please validate parameters provided."
+                            "\n*** end_point=%s\n ==> %s"
+                            % (add_url, to_text(http_exception))
+                        ),
+                        payload=auth_payload,
+                        headers=headers,
+                        status_code=http_exception.code,
+                    )
+                except Exception as unknown_exception:
+                    module.fail_json(
+                        msg=(
+                            "Unknown error while performing action on authentication_method."
+                            "\n*** end_point=%s\n%s"
+                            % (add_url, to_text(unknown_exception))
+                        ),
+                        payload=auth_payload,
+                        headers=headers,
+                        status_code=-1,
+                    )
 
     return updated
 
-def application_add_or_update(module, HTTPMethod, existing_info):
 
-    # Get safename from module parameters, and api base url
-    # along with validate_certs from the cyberark_session established
+def application_add_or_update(module, http_method, existing_info):
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = False
 
-    # Prepare result, paylod, and headers
     result = {}
     payload = {"AppID": app_id}
     end_point = ""
-    headers = telemetryHeaders(cyberark_session)
+    headers = telemetry_headers(cyberark_session)
 
-    # end_point and payload sets different depending on POST/PUT
-    # for POST -- create -- payload contains safename
-    # for PUT -- update -- safename is part of the endpoint
-    if HTTPMethod == "POST":
+    if http_method == "POST":
         end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/"
-    elif HTTPMethod == "PUT":
+    elif http_method == "PUT":
         end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}/".format(pappid=quote(app_id))
 
-    # --- Optionally populate payload based on parameters passed ---
     if "description" in module.params and module.params["description"] is not None:
         payload["Description"] = module.params["description"]
 
@@ -544,13 +525,11 @@ def application_add_or_update(module, HTTPMethod, existing_info):
     if "business_owner_phone" in module.params and module.params["business_owner_phone"] is not None:
         payload["BusinessOwnerPhone"] = module.params["business_owner_phone"]
 
-
-    # --------------------------------------------------------------
     logging.info(
-        "HTTPMethod = " + HTTPMethod + " module.params = " + json.dumps(module.params)
+        "http_method = " + http_method + " module.params = " + json.dumps(module.params)
     )
 
-    if HTTPMethod == "PUT":
+    if http_method == "PUT":
         logging.info("Verifying if needs to be updated")
         proceed = False
         updateable_fields = [
@@ -585,11 +564,9 @@ def application_add_or_update(module, HTTPMethod, existing_info):
         logging.info("Proceeding to either update or create")
         url = construct_url(api_base_url, end_point)
         try:
-
-            # execute REST action
             response = open_url(
                 url,
-                method=HTTPMethod,
+                method=http_method,
                 headers=headers,
                 data=json.dumps({"application": payload}),
                 validate_certs=validate_certs,
@@ -601,7 +578,7 @@ def application_add_or_update(module, HTTPMethod, existing_info):
             response_code = response.status
 
         except (HTTPError, httplib.HTTPException) as http_exception:
-            logging.info("response: " + http_exception.read().decode("utf-8"))
+            logging.info("response: %s", http_exception.read().decode("utf-8"))
             module.fail_json(
                 msg=(
                     "Error while performing application_add_or_update."
@@ -614,7 +591,6 @@ def application_add_or_update(module, HTTPMethod, existing_info):
                 status_code=http_exception.code,
             )
         except Exception as unknown_exception:
-
             module.fail_json(
                 msg=(
                     "Unknown error while performing application_add_or_update."
@@ -625,33 +601,26 @@ def application_add_or_update(module, HTTPMethod, existing_info):
                 headers=headers,
                 status_code=-1,
             )
-    
-    if updated == False:
-        return (False, existing_info, 200)
-    else:
-        (_, result, _) = application_details(module)
 
-        return (True, result, response_code)
-        
+    if not updated:
+        return False, existing_info, 200
+    else:
+        no_use01, result, no_use02 = application_details(module)
+
+        return True, result, response_code
 
 
 def application_delete(module):
-
-    # Get app_id from module parameters, and api base url
-    # along with validate_certs from the cyberark_session established
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
 
-    # Prepare result, end_point, and headers
     result = {}
     end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}".format(pappid=quote(app_id))
-    headers = telemetryHeaders(cyberark_session)
+    headers = telemetry_headers(cyberark_session)
     url = construct_url(api_base_url, end_point)
 
     try:
-
-        # execute REST action
         response = open_url(
             url,
             method="DELETE",
@@ -661,15 +630,13 @@ def application_delete(module):
 
         result = {"result": {}}
 
-        return (True, result, response.getcode())
+        return True, result, response.getcode()
 
     except (HTTPError, httplib.HTTPException) as http_exception:
-
         exception_text = to_text(http_exception)
         if http_exception.code == 404 and "ITATS003E" in exception_text:
-            # App does not exist
             result = {"result": {}}
-            return (False, result, http_exception.code)
+            return False, result, http_exception.code
         else:
             module.fail_json(
                 msg=(
@@ -683,7 +650,6 @@ def application_delete(module):
             )
 
     except Exception as unknown_exception:
-
         module.fail_json(
             msg=(
                 "Unknown error while performing application_delete."
@@ -696,15 +662,14 @@ def application_delete(module):
 
 
 def main():
-
-    required_if = [
-        ("AuthType", "path", ["AuthValue", "IsFolder", "AllowInternalScripts"]),
-        ("AuthType", "hash", ["AuthValue"]),
-        ("AuthType", "osUser", ["AuthValue"]),
-        ("AuthType", "machineAddress", ["AuthValue"]),
-        ("AuthType", "certificateSerialNumber", ["AuthValue"]),
-        ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"]),
-    ]
+    # required_if = [
+    #     ("AuthType", "path", ["AuthValue", "IsFolder", "AllowInternalScripts"]),
+    #     ("AuthType", "hash", ["AuthValue"]),
+    #     ("AuthType", "osUser", ["AuthValue"]),
+    #     ("AuthType", "machineAddress", ["AuthValue"]),
+    #     ("AuthType", "certificateSerialNumber", ["AuthValue"]),
+    #     ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"]),
+    # ]
 
     module = AnsibleModule(
         argument_spec=dict(
@@ -721,10 +686,20 @@ def main():
             business_owner_email=dict(type="str"),
             business_owner_phone=dict(type="str"),
             authentication=dict(type="list", elements="dict",
-                                required_if=required_if,
+                                required_if=[
+                                    ("AuthType", "path", ["AuthValue", "IsFolder", "AllowInternalScripts"]),
+                                    ("AuthType", "hash", ["AuthValue"]),
+                                    ("AuthType", "osUser", ["AuthValue"]),
+                                    ("AuthType", "machineAddress", ["AuthValue"]),
+                                    ("AuthType", "certificateSerialNumber", ["AuthValue"]),
+                                    ("AuthType", "certificateattr", ["Subject", "Issuer", "SubjectAlternativeName"]),
+                                ],
                                 options=dict(
                                     AllowInternalScripts=dict(type="bool", default=False),
-                                    AuthType=dict(type="str", required=True, choices=["path", "osUser", "hash", "machineAddress", "certificateSerialNumber", "certificateAttr"]),
+                                    AuthType=dict(type="str", required=True,
+                                                  choices=["path", "osUser", "hash",
+                                                           "machineAddress", "certificateSerialNumber",
+                                                           "certificateAttr"]),
                                     AuthValue=dict(type="str"),
                                     Comment=dict(type="str"),
                                     IsFolder=dict(type="bool", default=False),
@@ -733,40 +708,37 @@ def main():
                                     SubjectAlternativeName=dict(type="list", elements="str")
                                 )),
             logging_level=dict(
-                type="str", choices=["NOTSET", "DEBUG", "INFO"]
+                type="str", choices=["NOTSET", "DEBUG", "INFO"], default="NOTSET"
             ),
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
             timeout=dict(type="float", default=10),
         ),
-        required_if=required_if
+        # required_if=required_if
     )
 
     if module.params["logging_level"] is not None:
         logging.basicConfig(
             filename=module.params["logging_file"], level=module.params["logging_level"]
         )
-    
+
     logging.info("Starting Module")
 
     state = module.params["state"]
 
     if state == "present":
-        (changed, result, status_code) = application_details(module)
+        changed, result, status_code = application_details(module)
 
         if status_code == 200:
-            # Safe already exists
-            (changed, result, status_code) = application_add_or_update(
-               module, "PUT", result["result"]
-            )
+            changed, result, status_code = application_add_or_update(module, "PUT", result["result"])
         elif status_code == 404:
-            # Safe does not exist, proceed to create it
-            (changed, result, status_code) = application_add_or_update(module, "POST", None)
+            changed, result, status_code = application_add_or_update(module, "POST", None)
     elif state == "absent":
-        (changed, result, status_code) = application_delete(module)
+        changed, result, status_code = application_delete(module)
 
     module.exit_json(changed=changed, cyberark_application=result, status_code=status_code)
+
 
 if __name__ == "__main__":
     main()

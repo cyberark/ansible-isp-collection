@@ -104,28 +104,26 @@ options:
 """
 
 EXAMPLES = """
-  tasks:
-    - name: credential retrieval basic
-      cyberark_credential:
-        api_base_url: "http://10.10.0.1"
-        app_id: "TestID"
-        query: "Safe=test;UserName=admin"
-      register: result
+- name: Credential retrieval basic
+  cyberark.isp.cyberark_credential:
+    api_base_url: "http://10.10.0.1"
+    app_id: "TestID"
+    query: "Safe=test;UserName=admin"
+    register: result
 
-    - name: credential retrieval advanced
-      cyberark_credential:
-        api_base_url: "https://components.cyberark.local"
-        validate_certs: true
-        client_cert: /etc/pki/ca-trust/source/client.pem
-        client_key: /etc/pki/ca-trust/source/priv-key.pem
-        app_id: "TestID"
-        query: "Safe=test;UserName=admin"
-        connection_timeout: 60
-        query_format: Exact
-        fail_request_on_password_change: true
-        reason: "requesting credential for Ansible deployment"
-      register: result
-
+- name: Credential retrieval advanced
+  cyberark.isp.cyberark_credential:
+    api_base_url: "https://components.cyberark.local"
+    validate_certs: true
+    client_cert: /etc/pki/ca-trust/source/client.pem
+    client_key: /etc/pki/ca-trust/source/priv-key.pem
+    app_id: "TestID"
+    query: "Safe=test;UserName=admin"
+    connection_timeout: 60
+    query_format: Exact
+    fail_request_on_password_change: true
+    reason: "requesting credential for Ansible deployment"
+    register: result
 """
 
 RETURN = """
@@ -206,34 +204,34 @@ result:
             returned: if CPM management is disabled and a reason is given
 """
 
+import base64
+import json
+import traceback
 from ansible.module_utils._text import to_text
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import open_url
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import quote
 from ansible.module_utils.six.moves.http_client import HTTPException
-import base64
-import json
-import logging
-import traceback
 
 
-def telemetryHeaders(session = None):
+def telemetry_headers(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
+        "x-cybr-telemetry": base64.b64encode(
+            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
+        ).decode("utf-8")
     }
 
     if session is not None:
         headers["Authorization"] = "Bearer " + session["access_token"]
-    
+
     return headers
 
+
 def retrieve_credential(module):
-
     # Getting parameters from module
-
     api_base_url = module.params["api_base_url"]
     validate_certs = module.params["validate_certs"]
     app_id = module.params["app_id"]
@@ -274,7 +272,6 @@ def retrieve_credential(module):
     response = None
 
     try:
-
         response = open_url(
             api_base_url + end_point,
             method="GET",
@@ -284,7 +281,6 @@ def retrieve_credential(module):
         )
 
     except (HTTPError, HTTPException) as http_exception:
-
         module.fail_json(
             msg=(
                 "Error while retrieving credential."
@@ -297,8 +293,6 @@ def retrieve_credential(module):
         )
 
     except Exception as unknown_exception:
-
-
         module.fail_json(
             msg=(
                 "Unknown error while retrieving credential."
@@ -309,7 +303,6 @@ def retrieve_credential(module):
         )
 
     if response.getcode() == 200:  # Success
-
         # Result token from REST Api uses a different key based
         try:
             result = json.loads(response.read())
@@ -320,14 +313,13 @@ def retrieve_credential(module):
                 status_code=-1,
             )
 
-        return (result, response.getcode())
+        return result, response.getcode()
 
     else:
         module.fail_json(msg="error in end_point=>" + end_point)
 
 
 def main():
-
     fields = {
         "api_base_url": {"required": True, "type": "str"},
         "app_id": {"required": True, "type": "str"},
@@ -348,11 +340,12 @@ def main():
         "validate_certs": {"type": "bool", "default": True},
         "client_cert": {"type": "str", "required": False},
         "client_key": {"type": "str", "required": False, "no_log": True},
+        "path": {"type": "str", "required": False}
     }
 
     module = AnsibleModule(argument_spec=fields, supports_check_mode=True)
 
-    (result, status_code) = retrieve_credential(module)
+    result, status_code = retrieve_credential(module)
 
     module.exit_json(changed=False, result=result, status_code=status_code)
 

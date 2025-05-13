@@ -1,23 +1,17 @@
 ---
-- hosts: localhost
-
-  collections:
-    - cyberark.isp
+- name: Safe
+  hosts: localhost
 
   tasks:
 
     - name: Logon to CyberArk Vault using ISP Authentication
-      cyberark_authentication:
+      cyberark.isp.cyberark_authentication:
         api_base_url: "https://baseurl"
         client_id: "username"
         client_secret: "password"
 
-    - name: Show cyberark session
-      debug:
-        var: cyberark_session
-
     - name: Safe
-      cyberark_safe:
+      cyberark.isp.cyberark_safe:
         api_base_url: "https://baseurl"
         logging_level: DEBUG
         safe_name: "Partner-EdwardTest"
@@ -27,5 +21,5 @@
       register: cyberark_result
 
     - name: Show message
-      debug:
+      ansible.builtin.debug:
         var: cyberark_result

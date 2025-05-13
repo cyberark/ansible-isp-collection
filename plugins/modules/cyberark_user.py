@@ -54,7 +54,6 @@ options:
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -76,27 +75,26 @@ options:
             - This password must meet the password policy requirements.
             - This parameter is required when state is present -- Add User.
         type: str
-    new_password:
+    password:
         description:
-            - The user updated password. Make sure that this password meets
-              the password policy requirements.
+            - The password that the user will use to log on for the first time.
+            - This password must meet the password policy requirements.
+            - Not required for PKI or LDAP.
         type: str
-    email:
+    authentication_method:
         description:
-            - The user email address.
+            - The user authentication method.
         type: str
-    first_name:
-        description:
-            - The user first name.
-        type: str
-    last_name:
-        description:
-            - The user last name.
-        type: str
-    change_password_on_the_next_logon:
+        choices: [AuthTypePass, AuthTypeRadius, AuthTypeLDAP]
+    change_pass_on_next_logon:
         description:
             - Whether or not the user must change their password in their
               next logon.
+        type: bool
+        default: false
+    password_never_expires:
+        description:
+            - Password never expires.
         type: bool
         default: false
     domain_name:
@@ -112,16 +110,21 @@ options:
             - The date and time when the user account will expire and become
               disabled.
         type: str
-    user_type_name:
+    user_type:
         description:
             - The type of user.
             - The parameter defaults to C(EPVUser).
         type: str
+    non_authorized_interfaces:
+        description:
+            - The CyberArk interfaces that this user is not authorized to use.
+        type: list
+        elements: str
     enable_user:
         description:
             - Whether or not the user will be disabled.
         type: bool
-        default: false
+        default: true
     location:
         description:
             - The Vault Location for the user.
@@ -143,13 +146,29 @@ options:
             - The ID of the user group to add the user to
             - Prefered over group_name
         type: int
-    authorization:
+    distinguished_name:
+        description:
+            - The user's distinguished name. The usage is for PKI authentication,
+            - this will match the certificate Subject Name or domain name.
+        type: str
+    vault_authorization:
         description:
             - A list of authorization options for this user.
             - Options can include AddSafes and AuditUsers
             - The default provides backwards compatability with older versions of the collection
         type: list
         elements: str
+        choices:
+          - AddSafes
+          - AuditUsers
+          - AddUpdateUsers
+          - ResetUsersPasswords
+          - ActivateUsers
+          - AddNetworkAreas
+          - ManageDirectoryMapping
+          - ManageServerFileCategories
+          - BackupAllSafes
+          - RestoreAllSafes
         default:
           - AddSafes
           - AuditUsers
@@ -157,25 +176,133 @@ options:
         description:
             - The user's postal address, including city, state, zip, country and street
         type: dict
+        suboptions:
+            workStreet:
+                description: Street for work address.
+                type: str
+                default: ""
+            workCity:
+                description: City for work address.
+                type: str
+                default: ""
+            workState:
+                description: State.
+                type: str
+                default: ""
+            workZip:
+                description: Zip code.
+                type: str
+                default: ""
+            workCountry:
+                description: Country.
+                type: str
+                default: ""
     internet:
         description:
             - The user's email addresses, including home page and email, business and other email
         type: dict
+        suboptions:
+            homePage:
+                description: Homepage URL.
+                type: str
+                default: ""
+            homeEmail:
+                description: Personal email.
+                type: str
+                default: ""
+            businessEmail:
+                description: Work email.
+                type: str
+                default: ""
+            otherEmail:
+                description: Other email.
+                type: str
+                default: ""
     phones:
         description:
             - The user's phone numbers, including home, business, cellular, fax and pager
         type: dict
+        suboptions:
+            homeNumber:
+                description: Home phone number.
+                type: str
+                default: ""
+            businessNumber:
+                description: Work phone number.
+                type: str
+                default: ""
+            cellularNumber:
+                description: Cellular phone number.
+                type: str
+                default: ""
+            faxNumber:
+                description: Fax number.
+                type: str
+                default: ""
+            pagerNumber:
+                description: Pager number.
+                type: str
+                default: ""
     description:
         description:
             - Notes and comments.
         type: str
-    personalDetails:
+    personal_details:
         description:
-            - The user's personal details including: 
+            - The user's personal details including
             - firstName, middleName, lastName, address
             - city, state, zip, country
             - title, organization, department, profession
         type: dict
+        suboptions:
+            firstName:
+                description: First name.
+                default: ""
+                type: str
+            lastName:
+                description: Last name.
+                default: ""
+                type: str
+            middleName:
+                description: Middle Name.
+                default: ""
+                type: str
+            street:
+                description: Street.
+                default: ""
+                type: str
+            city:
+                description: City.
+                default: ""
+                type: str
+            state:
+                description: State.
+                default: ""
+                type: str
+            zip:
+                description: Zip.
+                default: ""
+                type: str
+            country:
+                description: Country.
+                default: ""
+                type: str
+            title:
+                description: Title.
+                default: ""
+                type: str
+            organization:
+                description: Organization.
+                default: ""
+                type: str
+            department:
+                description: Department.
+                default: ""
+                type: str
+            profession:
+                description: Profession.
+                default: ""
+                type: str
 """
 
 EXAMPLES = r"""
@@ -239,7 +366,8 @@ from ansible.module_utils.six.moves.urllib.parse import quote
 def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
-def telemetryHeaders(session = None):
+
+def telemetryHeaders(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
@@ -312,7 +440,6 @@ def user_details(module):
 
     else:
         return (False, None, 404)
-
 
 
 def user_add_or_update(module, HTTPMethod, existing_info):
@@ -421,17 +548,17 @@ def user_add_or_update(module, HTTPMethod, existing_info):
         ]
         empty_object_fields = {}
         empty_object_fields["personalDetails"] = {
-            "street": "", 
-            "city": "", 
-            "state": "", 
-            "zip": "", 
-            "country": "", 
-            "title": "", 
-            "organization": "", 
-            "department": "", 
-            "profession": "", 
-            "firstName": "", 
-            "middleName": "", 
+            "street": "",
+            "city": "",
+            "state": "",
+            "zip": "",
+            "country": "",
+            "title": "",
+            "organization": "",
+            "department": "",
+            "profession": "",
+            "firstName": "",
+            "middleName": "",
             "lastName": ""
         }
         empty_object_fields["businessAddress"] = {
@@ -493,7 +620,7 @@ def user_add_or_update(module, HTTPMethod, existing_info):
             return (True, result, response.getcode())
 
         except (HTTPError, httplib.HTTPException) as http_exception:
-            logging.info("response: " + http_exception.read().decode("utf-8"))
+            logging.info("response: %s", http_exception.read().decode("utf-8"))
             module.fail_json(
                 msg=(
                     "Error while performing user_add_or_update."
@@ -546,7 +673,7 @@ def resolve_username_to_id(module):
         return user_id
 
     except (HTTPError, httplib.HTTPException) as http_exception:
-        logging.info("url: " + url)
+        logging.info("url: %s", url)
         exception_text = to_text(http_exception)
         module.fail_json(msg=(
             "Error while performing user_search."
@@ -759,6 +886,7 @@ def user_add_to_group(module):
             status_code=-1,
         )
 
+
 def main():
 
     module = AnsibleModule(
@@ -774,60 +902,54 @@ def main():
                 type="str", choices=["AuthTypePass", "AuthTypeRadius", "AuthTypeLDAP"]
             ),
             initial_password=dict(type="str", no_log=True),
+            password=dict(type="str", no_log=True),
             change_pass_on_next_logon=dict(type="bool", default=False, no_log=False),
             password_never_expires=dict(type="bool", default=False, no_log=False),
             distinguished_name=dict(type="str"),
             vault_authorization=dict(type="list", elements="str", required=False, default=["AddSafes", "AuditUsers"],
-                choices=["AddSafes", "AuditUsers", "AddUpdateUsers", "ResetUsersPasswords", "ActivateUsers",
-                         "AddNetworkAreas", "ManageDirectoryMapping", "ManageServerFileCategories", "BackupAllSafes",
-                         "RestoreAllSafes"]
-            ),
+                                     choices=["AddSafes", "AuditUsers", "AddUpdateUsers", "ResetUsersPasswords", "ActivateUsers",
+                                              "AddNetworkAreas", "ManageDirectoryMapping", "ManageServerFileCategories", "BackupAllSafes",
+                                              "RestoreAllSafes"]),
             business_address=dict(type="dict",
-                                  options=dict(
-                                      workStreet=dict(type="str", default=""),
-                                      workCity=dict(type="str", default=""),
-                                      workState=dict(type="str", default=""),
-                                      workZip=dict(type="str", default=""),
-                                      workCountry=dict(type="str", default="")
-                                    )
-                                ),
+                                  options=dict(workStreet=dict(type="str", default=""),
+                                               workCity=dict(type="str", default=""),
+                                               workState=dict(type="str", default=""),
+                                               workZip=dict(type="str", default=""),
+                                               workCountry=dict(type="str", default="")
+                                               )
+                                  ),
             internet=dict(type="dict",
-                                  options=dict(
-                                      homePage=dict(type="str", default=""),
-                                      homeEmail=dict(type="str", default=""),
-                                      businessEmail=dict(type="str", default=""),
-                                      otherEmail=dict(type="str", default="")
-                                    )
-                                ),
+                          options=dict(homePage=dict(type="str", default=""),
+                                       homeEmail=dict(type="str", default=""),
+                                       businessEmail=dict(type="str", default=""),
+                                       otherEmail=dict(type="str", default="")
+                                       )
+                          ),
             phones=dict(type="dict",
-                                  options=dict(
-                                      homeNumber=dict(type="str", default=""),
-                                      businessNumber=dict(type="str", default=""),
-                                      cellularNumber=dict(type="str", default=""),
-                                      faxNumber=dict(type="str", default=""),
-                                      pagerNumber=dict(type="str", default="")
-                                    )
-                                ),
-            personal_details=dict(type="dict", 
-                                  options=dict(
-                                      firstName=dict(type="str", default=""),
-                                      lastName=dict(type="str", default=""),
-                                      middleName=dict(type="str", default=""),
-                                      street=dict(type="str", default=""),
-                                      city=dict(type="str", default=""),
-                                      state=dict(type="str", default=""),
-                                      zip=dict(type="str", default=""),
-                                      country=dict(type="str", default=""),
-                                      title=dict(type="str", default=""),
-                                      organization=dict(type="str", default=""),
-                                      department=dict(type="str", default=""),
-                                      profession=dict(type="str", default="")
-                                    )
-                                ),
+                        options=dict(homeNumber=dict(type="str", default=""),
+                                     businessNumber=dict(type="str", default=""),
+                                     cellularNumber=dict(type="str", default=""),
+                                     faxNumber=dict(type="str", default=""),
+                                     pagerNumber=dict(type="str", default="")
+                                     )
+                        ),
+            personal_details=dict(type="dict",
+                                  options=dict(firstName=dict(type="str", default=""),
+                                               lastName=dict(type="str", default=""),
+                                               middleName=dict(type="str", default=""),
+                                               street=dict(type="str", default=""),
+                                               city=dict(type="str", default=""),
+                                               state=dict(type="str", default=""),
+                                               zip=dict(type="str", default=""),
+                                               country=dict(type="str", default=""),
+                                               title=dict(type="str", default=""),
+                                               organization=dict(type="str", default=""),
+                                               department=dict(type="str", default=""),
+                                               profession=dict(type="str", default="")
+                                               )
+                                  ),
             description=dict(type="str"),
-            logging_level=dict(
-                type="str", choices=["NOTSET", "DEBUG", "INFO"]
-            ),
+            logging_level=dict(type="str", choices=["NOTSET", "DEBUG", "INFO"]),
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
@@ -855,9 +977,7 @@ def main():
 
         if status_code == 200:
             # User already exists
-            (changed, result, status_code) = user_add_or_update(
-               module, "PUT", result["result"]
-            )
+            (changed, result, status_code) = user_add_or_update(module, "PUT", result["result"])
 
         elif status_code == 404:
             # User does not exist, proceed to create it
@@ -872,6 +992,7 @@ def main():
         (changed, result, status_code) = user_delete(module)
 
     module.exit_json(changed=changed, cyberark_user=result, status_code=status_code)
+
 
 if __name__ == "__main__":
     main()

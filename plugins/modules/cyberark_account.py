@@ -99,7 +99,7 @@ options:
               located.
         required: false
         type: str
-    name:
+    account_name:
         description:
             - The ObjectID of the account
         required: false
@@ -199,80 +199,74 @@ options:
 """
 
 EXAMPLES = """
-  collections:
-    - cyberark.isp
+- name: Logon to CyberArk Vault using PAS Web Services SDK
+  cyberark.isp.cyberark_authentication:
+    api_base_url: "http://components.cyberark.local"
+    validate_certs: false
+    username: "bizdev"
+    password: "Cyberark1"
 
-  tasks:
+- name: Creating an Account using the PAS WebServices SDK
+  cyberark.isp.cyberark_account:
+    logging_level: DEBUG
+    identified_by: "address,username"
+    safe: "Test"
+    address: "cyberark.local"
+    username: "administrator-x"
+    platform_id: WinServerLocal
+    secret: "@N&Ibl3!"
+    platform_account_properties:
+      LogonDomain: "cyberark"
+      OwnerName: "ansible_user"
+    secret_management:
+      automatic_management_enabled: true
+    state: present
+    cyberark_session: "{{ cyberark_session }}"
+    register: cyberarkaction
 
-    - name: Logon to CyberArk Vault using PAS Web Services SDK
-      cyberark_authentication:
-        api_base_url: "http://components.cyberark.local"
-        validate_certs: false
-        username: "bizdev"
-        password: "Cyberark1"
+- name: Rotate credential via reconcile and providing the password to be changed to
+  cyberark.isp.cyberark_account:
+    identified_by: "address,username"
+    safe: "Domain_Admins"
+    address: "prod.cyberark.local"
+    username: "admin"
+    platform_id: WinDomain
+    platform_account_properties:
+      LogonDomain: "PROD"
+    secret_management:
+      new_secret: "Ama123ah12@#!Xaamdjbdkl@#112"
+      management_action: "reconcile"
+      automatic_management_enabled: true
+    state: present
+    cyberark_session: "{{ cyberark_session }}"
+    register: reconcileaccount
 
-    - name: Creating an Account using the PAS WebServices SDK
-      cyberark_account:
-        logging_level: DEBUG
-        identified_by: "address,username"
-        safe: "Test"
-        address: "cyberark.local"
-        username: "administrator-x"
-        platform_id: WinServerLocal
-        secret: "@N&Ibl3!"
-        platform_account_properties:
-            LogonDomain: "cyberark"
-            OwnerName: "ansible_user"
-        secret_management:
-            automatic_management_enabled: true
-        state: present
-        cyberark_session: "{{ cyberark_session }}"
-      register: cyberarkaction
+- name: Update password only in VAULT
+  cyberark.isp.cyberark_account:
+    identified_by: "address,username"
+    safe: "Domain_Admins"
+    address: "prod.cyberark.local"
+    username: "admin"
+    platform_id: Generic
+    new_secret: "Ama123ah12@#!Xaamdjbdkl@#112"
+    state: present
+    cyberark_session: "{{ cyberark_session }}"
+    register: updateaccount
 
-    - name: Rotate credential via reconcile and providing the password to be changed to
-      cyberark_account:
-        identified_by: "address,username"
-        safe: "Domain_Admins"
-        address: "prod.cyberark.local"
-        username: "admin"
-        platform_id: WinDomain
-        platform_account_properties:
-            LogonDomain: "PROD"
-        secret_management:
-            new_secret: "Ama123ah12@#!Xaamdjbdkl@#112"
-            management_action: "reconcile"
-            automatic_management_enabled: true
-        state: present
-        cyberark_session: "{{ cyberark_session }}"
-      register: reconcileaccount
-    
-    - name: Update password only in VAULT
-      cyberark_account:
-        identified_by: "address,username"
-        safe: "Domain_Admins"
-        address: "prod.cyberark.local"
-        username: "admin"
-        platform_id: Generic
-        new_secret: "Ama123ah12@#!Xaamdjbdkl@#112"
-        state: present
-        cyberark_session: "{{ cyberark_session }}"
-      register: updateaccount
+- name: Retrieve account and password
+  cyberark.isp.cyberark_account:
+    identified_by: "address,username"
+    safe: "Domain_Admins"
+    address: "prod.cyberark.local"
+    username: "admin"
+    state: retrieve
+    cyberark_session: "{{ cyberark_session }}"
+    register: retrieveaccount
 
-    - name: Retrieve account and password
-      cyberark_account:
-        identified_by: "address,username"
-        safe: "Domain_Admins"
-        address: "prod.cyberark.local"
-        username: "admin"
-        state: retrieve
-        cyberark_session: "{{ cyberark_session }}"
-      register: retrieveaccount
-
-    - name: Logoff from CyberArk Vault
-      cyberark_authentication:
-        state: absent
-        cyberark_session: "{{ cyberark_session }}"
-
+- name: Logoff from CyberArk Vault
+  cyberark.isp.cyberark_authentication:
+    state: absent
+    cyberark_session: "{{ cyberark_session }}"
 """
 RETURN = """
 changed:
@@ -459,7 +453,8 @@ ansible_reference_fieldnames = {
     "remoteMachines": "remote_machines",
 }
 
-def telemetryHeaders(session = None):
+
+def telemetryHeaders(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
@@ -468,7 +463,7 @@ def telemetryHeaders(session = None):
 
     if session is not None:
         headers["Authorization"] = "Bearer " + session["access_token"]
-    
+
     return headers
 
 
@@ -495,7 +490,7 @@ def update_account(module, existing_account):
     last_status_code = 200
 
     HTTPMethod = "PATCH"
-    end_point = "/PasswordVault/api/Accounts/%s" % existing_account["id"]
+    end_point = "/PasswordVault/api/Accounts/%s/" % existing_account["id"]
 
     headers = telemetryHeaders(cyberark_session)
 
@@ -540,7 +535,7 @@ def update_account(module, existing_account):
                                 if existing_account_value is not None
                                 else {},
                             )
-                            path_value = "/%s/%s" % (
+                            path_value = "%s/%s" % (
                                 cyberark_property_name,
                                 child_cyberark_property_name,
                             )
@@ -559,21 +554,36 @@ def update_account(module, existing_account):
                                     )
                                 ):
                                     # Updating a property
-                                    replacing.update(
+                                    payload["Operations"].append(
                                         {
-                                            child_cyberark_property_name: child_module_parm_value
+                                            "op": "Replace",
+                                            "path": "/%s" % path_value,
+                                            "value": child_module_parm_value,
                                         }
                                     )
+
+                                    # replacing.update(
+                                    #     {
+                                    #         path_value: child_existing_account_value
+                                    #     }
+                                    # )
                             elif (
                                 child_module_parm_value is not None
                                 and child_module_parm_value != removal_value
                             ):
                                 # Adding a property value
-                                adding.update(
+                                payload["Operations"].append(
                                     {
-                                        child_cyberark_property_name: child_module_parm_value
+                                        "op": "Add",
+                                        "path": "/%s" % path_value,
+                                        "value": child_module_parm_value,
                                     }
                                 )
+                                # adding.update(
+                                #     {
+                                #         child_cyberark_property_name: child_module_parm_value
+                                #     }
+                                # )
                             logging.info(
                                 "parameter_name=%s  value=%s existing=%s",
                                 path_value,
@@ -589,14 +599,14 @@ def update_account(module, existing_account):
                                 "value": adding,
                             }
                         )
-                    if len(list(replacing.keys())) > 0:
-                        payload["Operations"].append(
-                            {
-                                "op": "replace",
-                                "path": "/%s" % cyberark_property_name,
-                                "value": replacing,
-                            }
-                        )
+                    # if len(list(replacing.keys())) > 0:
+                    #     payload["Operations"].append(
+                    #         {
+                    #             "op": "replace",
+                    #             "path": "/%s" % cyberark_property_name,
+                    #             "value": replacing,
+                    #         }
+                    #     )
                     if len(removing) > 0:
                         payload["Operations"].append(
                             {
@@ -644,60 +654,64 @@ def update_account(module, existing_account):
         else:
             logging.info("Proceeding with Update Account")
 
+            update_body = json.dumps(payload["Operations"])
             logging.info(
-                "Processing invidual operations (%d) => %s",
+                "Processing operations (%d) => %s",
                 len(payload["Operations"]),
-                json.dumps(payload),
+                update_body,
             )
-            for operation in payload["Operations"]:
-                individual_payload = [operation]
-                try:
-                    logging.info(" ==> %s", json.dumps([operation]))
-                    response = open_url(
-                        api_base_url + end_point,
-                        method=HTTPMethod,
-                        headers=headers,
-                        data=json.dumps(individual_payload),
-                        validate_certs=validate_certs,
-                    )
+            # for operation in payload["Operations"]:
+            # individual_payload = [operation]
+            try:
+                # logging.info(" ==> %s", json.dumps([operation]))
+                response = open_url(
+                    api_base_url + end_point,
+                    method=HTTPMethod,
+                    headers=headers,
+                    data=update_body,
+                    validate_certs=validate_certs,
+                )
 
-                    result = {"result": json.loads(response.read())}
-                    changed = True
-                    last_status_code = response.getcode()
+                result = {"result": json.loads(response.read())}
+                changed = True
+                last_status_code = response.getcode()
 
-                except (HTTPError, HTTPException) as http_exception:
+                logging.info("Update successful %s", json.dumps(result))
 
-                    if isinstance(http_exception, HTTPError):
-                        res = json.load(http_exception)
-                    else:
-                        res = to_text(http_exception)
+            except (HTTPError, HTTPException) as http_exception:
 
-                    module.fail_json(
-                        msg=(
-                            "Error while performing update_account."
-                            "Please validate parameters provided."
-                            "\n*** end_point=%s%s\n ==> %s"
-                            % (api_base_url, end_point, res)
-                        ),
-                        payload=individual_payload,
-                        headers=headers,
-                        status_code=http_exception.code,
-                    )
+                if isinstance(http_exception, HTTPError):
+                    res = json.load(http_exception)
+                else:
+                    res = to_text(http_exception)
 
-                except Exception as unknown_exception:
+                module.fail_json(
+                    msg=(
+                        "Error while performing update_account."
+                        "Please validate parameters provided."
+                        "\n*** end_point=%s%s\n ==> %s"
+                        % (api_base_url, end_point, res)
+                    ),
+                    payload=payload,
+                    headers=headers,
+                    status_code=http_exception.code,
+                )
 
-                    module.fail_json(
-                        msg=(
-                            "Unknown error while performing update_account."
-                            "\n*** end_point=%s%s\n%s"
-                            % (api_base_url, end_point, to_text(unknown_exception))
-                        ),
-                        payload=individual_payload,
-                        headers=headers,
-                        status_code=-1,
-                    )
+            except Exception as unknown_exception:
+
+                module.fail_json(
+                    msg=(
+                        "Unknown error while performing update_account."
+                        "\n*** end_point=%s%s\n%s"
+                        % (api_base_url, end_point, to_text(unknown_exception))
+                    ),
+                    payload=payload,
+                    headers=headers,
+                    status_code=-1,
+                )
 
     return (changed, result, last_status_code)
+
 
 def add_account(module):
 
@@ -826,6 +840,7 @@ def add_account(module):
             headers=headers,
             status_code=-1,
         )
+
 
 def delete_account(module, existing_account):
 
@@ -1191,10 +1206,9 @@ def retrieve_password(module, existing_account):
                 msg=(
                     "Error while performing retrieve_password."
                     "The returned value was not formatted as expected."
-                    "\n*** end_point=%s%s\n ==> %s" % (api_base_url, end_point, res)
+                    "\n*** end_point=%s%s\n" % (api_base_url, end_point)
                 ),
                 headers=headers,
-                status_code=http_exception.code,
             )
 
         password = password[1:-1]
@@ -1243,7 +1257,7 @@ def main():
         },
         "logging_level": {"type": "str", "choices": ["NOTSET", "DEBUG", "INFO"]},
         "logging_file": {"type": "str", "default": "/tmp/ansible_cyberark.log"},
-        "api_base_url": {"type": "str"},
+        "api_base_url": {"type": "str", "required": True},
         "validate_certs": {"type": "bool", "default": "true"},
         "cyberark_session": {"required": True, "type": "dict", "no_log": True},
         "identified_by": {

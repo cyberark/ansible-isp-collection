@@ -17,7 +17,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = r"""
 ---
-module: cyberark_safe
+module: cyberark_safe_member
 short_description: CyberArk Safe Member Management using Privilege Cloud Services Shared Services REST APIs.
 author:
   - Edward Nunez (@enunez-cyberark)
@@ -52,7 +52,6 @@ options:
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -73,6 +72,12 @@ options:
             - The CyberArk user name or group name of the Safe member.
         type: str
         required: true
+    member_type:
+        description:
+            - The type of safe member.
+        type: str
+        required: true
+        choices: [User, Group, Role]
     search_in:
         description:
             - You can search within the domain using the domain ID,
@@ -88,7 +93,6 @@ options:
         description:
             - The permissions that the user or group has on this Safe.
         type: dict
-        elements: dict
         suboptions:
             useAccounts:
                 description:
@@ -149,7 +153,7 @@ options:
                 default: false
             manageSafe:
                 description:
-                    - Perform administrative tasks in the Safe, including:
+                    - Perform administrative tasks in the Safe, including
                     - Update Safe properties
                     - Recover the Safe
                     - Delete the Safe
@@ -215,41 +219,37 @@ options:
 
 EXAMPLES = r"""
 - name: Add member
-    cyberark_safe_member:
+  cyberark.isp.cyberark_safe_member:
     api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
     logging_level: DEBUG
     safe_name: "Partner-Test"
     member_name: "BD Tech"
-    permissions: 
-        useAccounts: True
-        retrieveAccounts: True
-        listAccounts: True
-        addAccounts: True
-        updateAccountContent: True
-        updateAccountProperties: True
-        initiateCPMAccountManagementOperations: True
-        specifyNextAccountContent: True
-        renameAccounts: True
-        deleteAccounts: True
-        unlockAccounts: True
-        manageSafe: True
-        manageSafeMembers: True
-        backupSafe: True
-        viewAuditLog: True
-        viewSafeMembers: True
-        requestsAuthorizationLevel1: True
-        requestsAuthorizationLevel2: False
-        accessWithoutConfirmation: True
-        createFolders: True
-        deleteFolders: True
-        moveAccountsAndFolders: True
+    permissions:
+      useAccounts: true
+      retrieveAccounts: true
+      listAccounts: true
+      addAccounts: true
+      updateAccountContent: true
+      updateAccountProperties: true
+      initiateCPMAccountManagementOperations: true
+      specifyNextAccountContent: true
+      renameAccounts: true
+      deleteAccounts: true
+      unlockAccounts: true
+      manageSafe: true
+      manageSafeMembers: true
+      backupSafe: true
+      viewAuditLog: true
+      viewSafeMembers: true
+      requestsAuthorizationLevel1: true
+      requestsAuthorizationLevel2: false
+      accessWithoutConfirmation: true
+      createFolders: true
+      deleteFolders: true
+      moveAccountsAndFolders: true
     cyberark_session: '{{ cyberark_session }}'
     state: present
     register: cyberark_result
-
-- name: Show message
-    debug:
-    var: cyberark_result
 """
 
 RETURN = r"""
@@ -286,13 +286,18 @@ import logging
 
 
 def construct_url(api_base_url, end_point):
+    """Constructs a full URL by combining the base URL and endpoint."""
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
-def telemetryHeaders(session = None):
+
+def telemetryHeaders(session=None):
+    """Generates telemetry headers for API requests."""
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
+        "x-cybr-telemetry": base64.b64encode(
+            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
+        ).decode("utf-8"),
     }
 
     if session is not None:
@@ -301,6 +306,7 @@ def telemetryHeaders(session = None):
 
 
 def safe_member_details(module):
+    """Fetches details of a safe member."""
 
     # Get safename from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
@@ -313,7 +319,9 @@ def safe_member_details(module):
     # Prepare result, end_point, and headers
     result = {}
 
-    end_point = "/PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(psafename=quote(safe_name), pmembername=quote(member_name))
+    end_point = "/PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(
+        psafename=quote(safe_name), pmembername=quote(member_name)
+    )
     url = construct_url(api_base_url, end_point)
 
     headers = telemetryHeaders(cyberark_session)
@@ -359,7 +367,9 @@ def safe_member_details(module):
             status_code=-1,
         )
 
+
 def safe_member_add_or_update(module, HTTPMethod, existing_info):
+    """Adds or updates a safe member."""
 
     # Get safename from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
@@ -380,9 +390,11 @@ def safe_member_add_or_update(module, HTTPMethod, existing_info):
     # for POST -- create -- payload contains safename
     # for PUT -- update -- safename is part of the endpoint
     if HTTPMethod == "POST":
-         end_point = "PasswordVault/api/Safes/{psafename}/Members".format(psafename=quote(safe_name))
+        end_point = "PasswordVault/api/Safes/{psafename}/Members".format(psafename=quote(safe_name))
     elif HTTPMethod == "PUT":
-        end_point = "PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(psafename=quote(safe_name), pmembername=quote(member_name))
+        end_point = "PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(
+            psafename=quote(safe_name), pmembername=quote(member_name)
+        )
 
     # --- Optionally populate payload based on parameters passed ---
     if "membership_expiration_date" in module.params and module.params["membership_expiration_date"] is not None:
@@ -432,7 +444,7 @@ def safe_member_add_or_update(module, HTTPMethod, existing_info):
             return (True, result, response.getcode())
 
         except (HTTPError, httplib.HTTPException) as http_exception:
-            logging.info("response: " + http_exception.read().decode("utf-8"))
+            logging.info("response: %s", http_exception.read().decode("utf-8"))
             module.fail_json(
                 msg=(
                     "Error while performing safe_member_add_or_update."
@@ -461,6 +473,7 @@ def safe_member_add_or_update(module, HTTPMethod, existing_info):
 
 
 def safe_member_delete(module):
+    """Deletes a safe member."""
 
     # Get safename from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
@@ -472,7 +485,9 @@ def safe_member_delete(module):
     # Prepare result, end_point, and headers
     result = {}
 
-    end_point = "PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(psafename=quote(safe_name), pmembername=quote(member_name))
+    end_point = "PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(
+        psafename=quote(safe_name), pmembername=quote(member_name)
+    )
     headers = telemetryHeaders(cyberark_session)
     url = construct_url(api_base_url, end_point)
 
@@ -483,7 +498,7 @@ def safe_member_delete(module):
             url,
             method="DELETE",
             headers=headers,
-            #validate_certs=validate_certs,
+            # validate_certs=validate_certs,
             timeout=module.params['timeout'],
         )
 
@@ -494,8 +509,8 @@ def safe_member_delete(module):
     except (HTTPError, httplib.HTTPException) as http_exception:
         exception_text = to_text(http_exception)
         error_body = http_exception.read().decode()
-        logging.debug("exception text: " + exception_text)
-        logging.debug("error body => " + error_body)
+        logging.debug("exception text: %s", exception_text)
+        logging.debug("error body => %s", error_body)
         if http_exception.code == 404 and error_body is not None:
             return (False, {"result": error_body}, http_exception.code)
         else:
@@ -524,6 +539,7 @@ def safe_member_delete(module):
 
 
 def main():
+    """Main function for the module."""
 
     module = AnsibleModule(
         argument_spec=dict(
@@ -531,37 +547,36 @@ def main():
             safe_name=dict(type="str", required=True),
             member_name=dict(type="str", required=True),
             search_in=dict(type="str", default="Vault"),
-            membership_expiration_date=dict(type=int),
-            permissions=dict(type="dict",
-                             options=dict(
-                                useAccounts=dict(type="bool", default=False),
-                                retrieveAccounts=dict(type="bool", default=False),
-                                listAccounts=dict(type="bool", default=False),
-                                addAccounts=dict(type="bool", default=False),
-                                updateAccountContent=dict(type="bool", default=False),
-                                updateAccountProperties=dict(type="bool", default=False),
-                                initiateCPMAccountManagementOperations=dict(type="bool", default=False),
-                                specifyNextAccountContent=dict(type="bool", default=False),
-                                renameAccounts=dict(type="bool", default=False),
-                                deleteAccounts=dict(type="bool", default=False),
-                                unlockAccounts=dict(type="bool", default=False),
-                                manageSafe=dict(type="bool", default=False),
-                                manageSafeMembers=dict(type="bool", default=False),
-                                backupSafe=dict(type="bool", default=False),
-                                viewAuditLog=dict(type="bool", default=False),
-                                viewSafeMembers=dict(type="bool", default=False),
-                                requestsAuthorizationLevel1=dict(type="bool", default=False),
-                                requestsAuthorizationLevel2=dict(type="bool", default=False),
-                                accessWithoutConfirmation=dict(type="bool", default=False),
-                                createFolders=dict(type="bool", default=False),
-                                deleteFolders=dict(type="bool", default=False),
-                                moveAccountsAndFolders=dict(type="bool", default=False)
-                            )
-                        ),
-            member_type=dict(type="str", choices=["User", "Group", "Role"], required=True),
-            logging_level=dict(
-                type="str", choices=["NOTSET", "DEBUG", "INFO"]
+            membership_expiration_date=dict(type="int"),
+            permissions=dict(
+                type="dict",
+                options=dict(
+                    useAccounts=dict(type="bool", default=False),
+                    retrieveAccounts=dict(type="bool", default=False),
+                    listAccounts=dict(type="bool", default=False),
+                    addAccounts=dict(type="bool", default=False),
+                    updateAccountContent=dict(type="bool", default=False),
+                    updateAccountProperties=dict(type="bool", default=False),
+                    initiateCPMAccountManagementOperations=dict(type="bool", default=False),
+                    specifyNextAccountContent=dict(type="bool", default=False),
+                    renameAccounts=dict(type="bool", default=False),
+                    deleteAccounts=dict(type="bool", default=False),
+                    unlockAccounts=dict(type="bool", default=False),
+                    manageSafe=dict(type="bool", default=False),
+                    manageSafeMembers=dict(type="bool", default=False),
+                    backupSafe=dict(type="bool", default=False),
+                    viewAuditLog=dict(type="bool", default=False),
+                    viewSafeMembers=dict(type="bool", default=False),
+                    requestsAuthorizationLevel1=dict(type="bool", default=False),
+                    requestsAuthorizationLevel2=dict(type="bool", default=False),
+                    accessWithoutConfirmation=dict(type="bool", default=False),
+                    createFolders=dict(type="bool", default=False),
+                    deleteFolders=dict(type="bool", default=False),
+                    moveAccountsAndFolders=dict(type="bool", default=False),
+                ),
             ),
+            member_type=dict(type="str", choices=["User", "Group", "Role"], required=True),
+            logging_level=dict(type="str", choices=["NOTSET", "DEBUG", "INFO"]),
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
@@ -583,7 +598,7 @@ def main():
         if status_code == 200:
             # Safe already exists
             (changed, result, status_code) = safe_member_add_or_update(
-               module, "PUT", result["result"]
+                module, "PUT", result["result"]
             )
         elif status_code == 404:
             # Safe does not exist, proceed to create it
@@ -592,6 +607,7 @@ def main():
         (changed, result, status_code) = safe_member_delete(module)
 
     module.exit_json(changed=changed, cyberark_safe_member=result, status_code=status_code)
+
 
 if __name__ == "__main__":
     main()

@@ -24,7 +24,7 @@ author:
   - Cyberark Bizdev (@cyberark-bizdev)
 version_added: '1.0.0'
 description:
-    - CyberArk Safe Management using Privilege Cloud Shared Services REST APIs,
+    - CyberArk Safe Management using Privilege Cloud Shared Services REST APIs.
       It currently supports the following actions Get Safe Details, Add Safe,
       Update Safe, Delete Safe.
 
@@ -45,7 +45,7 @@ options:
             - Specifies the state needed for the user present for create user,
               absent for delete user.
         type: str
-        choices: [ absent, present ]
+        choices: [absent, present]
         default: present
     logging_level:
         description:
@@ -53,7 +53,6 @@ options:
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -65,7 +64,7 @@ options:
         description:
             - Dictionary set by a CyberArk authentication containing the
               different values to perform actions on a logged-on CyberArk
-              session, please see M(cyberark.isp.cyberark_authentication) module for an
+              session. Please see M(cyberark.isp.cyberark_authentication) module for an
               example of cyberark_session.
         type: dict
         required: true
@@ -89,22 +88,23 @@ options:
         description:
             - The number of days that password versions are saved in the Safe.
         type: int
+        default: 7
     auto_purge_enabled:
         description:
-            - Whether or not to automatically purge files after the end of the Object History 
+            - Whether or not to automatically purge files after the end of the Object History
               Retention Period defined in the Safe properties.
         type: bool
         default: false
     timeout:
         description:
-            - How long to wait for the server to send data before giving up
+            - How long to wait for the server to send data before giving up.
         type: float
         default: 10
 """
 
 EXAMPLES = r"""
 - name: Safe
-    cyberark_safe:
+  cyberark.isp.cyberark_safe:
     api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
     description: "Safe for Partner EdwardTest"
     logging_level: DEBUG
@@ -113,10 +113,6 @@ EXAMPLES = r"""
     state: present
     cyberark_session: '{{ cyberark_session }}'
     register: cyberark_result
-
-- name: Show message
-    debug:
-    var: cyberark_result
 """
 
 RETURN = r"""
@@ -130,11 +126,11 @@ cyberark_safe:
     type: complex
     contains:
         result:
-            description: safe properties
+            description: Safe properties.
             type: dict
             returned: success
 status_code:
-    description: Result HTTP Status code
+    description: Result HTTP Status code.
     returned: success
     type: int
     sample: 200
@@ -155,11 +151,13 @@ import logging
 def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
-def telemetryHeaders(session = None):
+
+def telemetryHeaders(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
+        "x-cybr-telemetry": base64.b64encode(
+            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
     }
 
     if session is not None:
@@ -168,7 +166,6 @@ def telemetryHeaders(session = None):
 
 
 def safe_details(module):
-
     # Get safename from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
     safe_name = module.params["safe_name"]
@@ -186,7 +183,6 @@ def safe_details(module):
     logging.info(headers)
 
     try:
-
         response = open_url(
             url,
             method="GET",
@@ -195,12 +191,11 @@ def safe_details(module):
             timeout=module.params['timeout'],
         )
         result = {"result": json.loads(response.read())}
-        return (False, result, response.getcode())
+        return False, result, response.getcode()
 
     except (HTTPError, httplib.HTTPException) as http_exception:
-
         if http_exception.code == 404:
-            return (False, None, http_exception.code)
+            return False, None, http_exception.code
         else:
             module.fail_json(
                 msg=(
@@ -214,7 +209,6 @@ def safe_details(module):
             )
 
     except Exception as unknown_exception:
-
         module.fail_json(
             msg=(
                 "Unknown error while performing safe_details."
@@ -226,9 +220,7 @@ def safe_details(module):
         )
 
 
-
 def safe_add_or_update(module, HTTPMethod, existing_info):
-
     # Get safename from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
     safe_name = module.params["safe_name"]
@@ -269,7 +261,6 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
     if "auto_purge_enabled" in module.params and module.params["auto_purge_enabled"] is not None:
         payload["AutoPurgeEnabled"] = module.params["auto_purge_enabled"]
 
-
     # --------------------------------------------------------------
     if HTTPMethod == "PUT":
         logging.info("Verifying if needs to be updated")
@@ -283,9 +274,9 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
         ]
         for field_name in updateable_fields:
             if (
-                field_name in payload
-                and field_name in existing_info
-                and payload[field_name] != existing_info[field_name]
+                    field_name in payload
+                    and field_name in existing_info
+                    and payload[field_name] != existing_info[field_name]
             ):
                 logging.info("Changing value for %s", field_name)
                 proceed = True
@@ -298,7 +289,6 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
         logging.info("Proceeding to either update or create")
         url = construct_url(api_base_url, end_point)
         try:
-
             # execute REST action
             response = open_url(
                 url,
@@ -311,10 +301,10 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
 
             result = {"result": json.loads(response.read())}
 
-            return (True, result, response.getcode())
+            return True, result, response.getcode()
 
         except (HTTPError, httplib.HTTPException) as http_exception:
-            logging.info("response: " + http_exception.read().decode("utf-8"))
+            logging.info("response: %s", http_exception.read().decode("utf-8"))
             module.fail_json(
                 msg=(
                     "Error while performing safe_add_or_update."
@@ -327,7 +317,6 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
                 status_code=http_exception.code,
             )
         except Exception as unknown_exception:
-
             module.fail_json(
                 msg=(
                     "Unknown error while performing safe_add_or_update."
@@ -339,11 +328,10 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
                 status_code=-1,
             )
     else:
-        return (False, existing_info, 200)
+        return False, existing_info, 200
 
 
 def safe_delete(module):
-
     # Get safename from module parameters, and api base url
     # along with validate_certs from the cyberark_session established
     safe_name = module.params["safe_name"]
@@ -358,27 +346,25 @@ def safe_delete(module):
     url = construct_url(api_base_url, end_point)
 
     try:
-
         # execute REST action
         response = open_url(
             url,
             method="DELETE",
             headers=headers,
-            #validate_certs=validate_certs,
+            # validate_certs=validate_certs,
             timeout=module.params['timeout'],
         )
 
         result = {"result": {}}
 
-        return (True, result, response.getcode())
+        return True, result, response.getcode()
 
     except (HTTPError, httplib.HTTPException) as http_exception:
-
         exception_text = to_text(http_exception)
         if http_exception.code == 404 and "ITATS003E" in exception_text:
             # Safe does not exist
             result = {"result": {}}
-            return (False, result, http_exception.code)
+            return False, result, http_exception.code
         else:
             module.fail_json(
                 msg=(
@@ -392,7 +378,6 @@ def safe_delete(module):
             )
 
     except Exception as unknown_exception:
-
         module.fail_json(
             msg=(
                 "Unknown error while performing safe_delete."
@@ -405,7 +390,6 @@ def safe_delete(module):
 
 
 def main():
-
     module = AnsibleModule(
         argument_spec=dict(
             state=dict(type="str", default="present", choices=["absent", "present"]),
@@ -415,7 +399,7 @@ def main():
             managing_cpm=dict(type="str"),
             number_of_versions_retention=dict(type="int"),
             number_of_days_retention=dict(type="int", default=7),
-            auto_purge_enable=dict(type="bool", default=False),
+            auto_purge_enabled=dict(type="bool", default=False),
             logging_level=dict(
                 type="str", choices=["NOTSET", "DEBUG", "INFO"]
             ),
@@ -436,20 +420,21 @@ def main():
     state = module.params["state"]
 
     if state == "present":
-        (changed, result, status_code) = safe_details(module)
+        changed, result, status_code = safe_details(module)
 
         if status_code == 200:
             # Safe already exists
-            (changed, result, status_code) = safe_add_or_update(
-               module, "PUT", result["result"]
+            changed, result, status_code = safe_add_or_update(
+                module, "PUT", result["result"]
             )
         elif status_code == 404:
             # Safe does not exist, proceed to create it
-            (changed, result, status_code) = safe_add_or_update(module, "POST", None)
+            changed, result, status_code = safe_add_or_update(module, "POST", None)
     elif state == "absent":
-        (changed, result, status_code) = safe_delete(module)
+        changed, result, status_code = safe_delete(module)
 
     module.exit_json(changed=changed, cyberark_safe=result, status_code=status_code)
+
 
 if __name__ == "__main__":
     main()

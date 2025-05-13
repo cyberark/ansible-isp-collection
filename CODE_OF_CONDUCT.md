@@ -5,7 +5,7 @@ Please see the official [Ansible Community Code of Conduct](https://docs.ansible
 # CyberArk Community Code of Conduct
 
 CyberArk is a leader in Privileged Access Management, thanks to its customers and community. We listen to our community and wish to provide additional relevant tools.  We believe that our mission is best served in an environment that is friendly, safe, and accepting; free from intimidation or harassment.
-Towards this end, CyberArk’s developers have created this Community Code of Conduct for the CyberArk open source community.  Our Code of Conduct sets the standard for how developers, and community members can work together in a respectful and collaborative manner.  Those who do not abide by this Code of Conduct will not be permitted to remain part of our community.
+Towards this end, CyberArk's developers have created this Community Code of Conduct for the CyberArk open source community.  Our Code of Conduct sets the standard for how developers, and community members can work together in a respectful and collaborative manner.  Those who do not abide by this Code of Conduct will not be permitted to remain part of our community.
 
 
 ## Summary of Key Principles
@@ -36,11 +36,11 @@ The following behaviors are considered harassment under this Code of Conduct and
 - Violence, threats of violence, or violent language directed against another person or group of people.
 - Sexist, racist, homophobic, transphobic, ableist, or otherwise discriminatory jokes and language.
 - Posting or displaying sexually explicit or violent material.
-- Posting or threatening to post other people’s personally identifying information ("doxing").
+- Posting or threatening to post other people's personally identifying information ("doxing").
 - Personal insults, particularly those related to related to gender identity, sexual orientation, ability, ethnicity, religion, age, physical appearance, body size, race, or similar personal characteristics.
 - Using offensive or harassing nicknames or other identifiers.
 - Inappropriate photography or recording.
-- Inappropriate physical contact. You should have someone’s consent before touching them.
+- Inappropriate physical contact. You should have someone's consent before touching them.
 - Unwelcome sexual attention. This includes: sexualized comments or jokes; inappropriate touching, groping, and unwelcome sexual advances.
 - Deliberate intimidation, stalking, or following (online or in person).
 - Sustained disruption of community events, including talks and presentations.

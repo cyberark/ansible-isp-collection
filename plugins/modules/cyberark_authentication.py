@@ -39,6 +39,7 @@ options:
         description:
             - The type of grant for the authentication.
         type: str
+        choices: [client_credentials]
     client_id:
         description:
             - The login name of the service account for authentication.
@@ -60,7 +61,7 @@ options:
 """
 
 EXAMPLES = """
-- name: Logon 
+- name: Logon
   cyberark_authentication:
     api_base_url: "{{ web_services_base_url }}"
     client_id: "{{ password_object.password }}"
@@ -103,21 +104,40 @@ from ansible.module_utils.six.moves.http_client import HTTPException
 import base64
 import json
 
-def telemetryHeaders(session = None):
+
+def telemetryHeaders(session=None):
+    """
+    Generate telemetry headers for the CyberArk API.
+
+    Args:
+        session (dict, optional): Session information containing the access token.
+
+    Returns:
+        dict: Headers for the API request.
+    """
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
+        "x-cybr-telemetry": base64.b64encode(
+            b"in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows"
+        ).decode("utf-8"),
     }
 
     if session is not None:
-        headers["Authorization"] = "Bearer " + session["access_token"]
+        headers["Authorization"] = f"Bearer {session['access_token']}"
     return headers
 
+
 def processAuthentication(module):
+    """
+    Process authentication to CyberArk API.
 
-    # Getting parameters from module
+    Args:
+        module (AnsibleModule): The Ansible module instance.
 
+    Returns:
+        tuple: A tuple containing changed status, result, and return code.
+    """
     api_base_url = module.params["api_base_url"]
     grant_type = module.params["grant_type"]
     client_id = module.params["client_id"]
@@ -132,12 +152,15 @@ def processAuthentication(module):
 
     if state == "present":  # Logon Action
 
-        end_point = api_base_url + "/oauth2/platformtoken"
-        payload_dict = {"grant_type": grant_type, "client_id": client_id, "client_secret": client_secret}
+        end_point = f"{api_base_url}/oauth2/platformtoken"
+        payload_dict = {
+            "grant_type": grant_type,
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
         headers = telemetryHeaders()
 
         try:
-
             response = open_url(
                 end_point,
                 method="POST",
@@ -148,25 +171,19 @@ def processAuthentication(module):
             )
 
         except (HTTPError, HTTPException) as http_exception:
-
             module.fail_json(
                 msg=(
-                    "Error while performing authentication."
-                    "Please validate parameters provided, and ability to logon to "
-                    "CyberArk.\n*** end_point=%s\n ==> %s"
-                )
-                % (end_point, to_text(http_exception)),
+                    f"Error while performing authentication. Please validate parameters provided, and ability to logon to "
+                    f"CyberArk.\n*** end_point={end_point}\n ==> {to_text(http_exception)}"
+                ),
                 headers=headers,
                 status_code=http_exception.code,
             )
 
         except Exception as unknown_exception:
-
             module.fail_json(
                 msg=(
-                    "Unknown error while performing authentication."
-                    "\n*** end_point=%s\n%s"
-                    % (end_point, to_text(unknown_exception))
+                    f"Unknown error while performing authentication.\n*** end_point={end_point}\n{to_text(unknown_exception)}"
                 ),
                 headers=headers,
                 status_code=-1,
@@ -174,36 +191,30 @@ def processAuthentication(module):
 
         return_code = response.getcode()
         if return_code == 200:  # Success
+            token = ""
+            try:
+                token = str(json.loads(response.read()))
+            except Exception as e:
+                module.fail_json(
+                    msg=f"Error obtaining token\n{to_text(e)}",
+                    headers=headers,
+                    status_code=-1,
+                )
 
-            if state == "present":  # Logon Action
-
-                token = ""
-                try:
-                    token = str(json.loads(response.read()))
-                except Exception as e:
-                    module.fail_json(
-                        msg="Error obtaining token\n%s" % (to_text(e)),
-                        headers=headers,
-                        status_code=-1,
-                    )
-
-                # Preparing result of the module
-                result = {
-                    "cyberark_session": token
-                }
+            # Preparing result of the module
+            result = {"cyberark_session": token}
 
         else:
-            module.fail_json(msg="error in end_point=>" + end_point, headers=headers)
+            module.fail_json(msg=f"Error in end_point => {end_point}", headers=headers)
 
     else:  # Logoff Action clears cyberark_session
-
         result = {"cyberark_session": {}}
 
-    return (changed, result, return_code)
+    return changed, result, return_code
 
 
 def main():
-
+    """Main entry point for the module."""
     fields = {
         "api_base_url": {"type": "str"},
         "client_id": {"type": "str"},
@@ -237,7 +248,7 @@ def main():
         supports_check_mode=True,
     )
 
-    (changed, result, status_code) = processAuthentication(module)
+    changed, result, status_code = processAuthentication(module)
 
     module.exit_json(changed=changed, ansible_facts=result, status_code=status_code)
 

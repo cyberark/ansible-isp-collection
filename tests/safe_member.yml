@@ -1,38 +1,32 @@
 ---
-- hosts: localhost
-
-  collections:
-    - cyberark.isp
+- name: Safe member
+  hosts: localhost
 
   tasks:
 
     - name: Logon to CyberArk Vault using ISP Authentication
-      cyberark_authentication:
+      cyberark.isp.cyberark_authentication:
         api_base_url: "https://tenant.id.cyberark.cloud"
         client_id: "client_id"
         client_secret: "secret"
 
-    - name: Show cyberark session
-      debug:
-        var: cyberark_session
-
     - name: Application
-      cyberark_application:
+      cyberark.isp.cyberark_application:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         logging_level: DEBUG
         app_id: "EdwardTest_AppID"
         authentication:
           - AuthType: path
             AuthValue: "/tmp"
-            IsFolder: True
+            IsFolder: true
           - AuthType: path
             AuthValue: "/var/tmp"
-            IsFolder: True
-            AllowInternalScripts: True
+            IsFolder: true
+            AllowInternalScripts: true
           - AuthType: path
             AuthValue: "/shr/apps"
-            IsFolder: True
-            AllowInternalScripts: True
+            IsFolder: true
+            AllowInternalScripts: true
           - AuthType: osUser
             AuthValue: "Edward/Edward"
           - AuthType: osUser
@@ -53,18 +47,18 @@
             Comment: "Authentication 2"
           - AuthType: certificateAttr
             Issuer: "CN=Thawte RSA CA 2018,OU=www.digicert.com"
-            Subject: ["CN=yourcompany.com","OU=IT","C=IL"]
-            SubjectAlternativeName: ["DNS Name=www.example.com","IP Address=1.2.3.4"]
+            Subject: ["CN=yourcompany.com", "OU=IT", "C=IL"]
+            SubjectAlternativeName: ["DNS Name=www.example.com", "IP Address=1.2.3.4"]
         state: present
         cyberark_session: '{{ cyberark_session }}'
       register: cyberark_result
 
     - name: Show message
-      debug:
+      ansible.builtin.debug:
         var: cyberark_result
 
     - name: Safe
-      cyberark_safe:
+      cyberark.isp.cyberark_safe:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         description: "Safe for Partner EdwardTest"
         logging_level: DEBUG
@@ -75,61 +69,62 @@
       register: cyberark_result
 
     - name: Show message
-      debug:
+      ansible.builtin.debug:
         var: cyberark_result
 
     - name: Add member
-      cyberark_safe_member:
+      cyberark.isp.cyberark_safe_member:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         logging_level: DEBUG
         safe_name: "Partner-EdwardTest"
         member_name: "BD Tech"
-        permissions: 
-          useAccounts: True
-          retrieveAccounts: True
-          listAccounts: True
-          addAccounts: True
-          updateAccountContent: True
-          updateAccountProperties: True
-          initiateCPMAccountManagementOperations: True
-          specifyNextAccountContent: True
-          renameAccounts: True
-          deleteAccounts: True
-          unlockAccounts: True
-          manageSafe: True
-          manageSafeMembers: True
-          backupSafe: True
-          viewAuditLog: True
-          viewSafeMembers: True
-          requestsAuthorizationLevel1: True
-          requestsAuthorizationLevel2: False
-          accessWithoutConfirmation: True
-          createFolders: True
-          deleteFolders: True
-          moveAccountsAndFolders: True
+        member_type: Group
+        permissions:
+          useAccounts: true
+          retrieveAccounts: true
+          listAccounts: true
+          addAccounts: true
+          updateAccountContent: true
+          updateAccountProperties: true
+          initiateCPMAccountManagementOperations: true
+          specifyNextAccountContent: true
+          renameAccounts: true
+          deleteAccounts: true
+          unlockAccounts: true
+          manageSafe: true
+          manageSafeMembers: true
+          backupSafe: true
+          viewAuditLog: true
+          viewSafeMembers: true
+          requestsAuthorizationLevel1: true
+          requestsAuthorizationLevel2: false
+          accessWithoutConfirmation: true
+          createFolders: true
+          deleteFolders: true
+          moveAccountsAndFolders: true
         cyberark_session: '{{ cyberark_session }}'
         state: present
       register: cyberark_result
 
     - name: Show message
-      debug:
+      ansible.builtin.debug:
         var: cyberark_result
 
     - name: Add member
-      cyberark_safe_member:
+      cyberark.isp.cyberark_safe_member:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         logging_level: DEBUG
         safe_name: "Partner-EdwardTest"
         member_name: "edward@cyberark.cloud.10781"
-        permissions: 
-          useAccounts: True
-          retrieveAccounts: True
-          listAccounts: True
+        member_type: "User"
+        permissions:
+          useAccounts: true
+          retrieveAccounts: true
+          listAccounts: true
         cyberark_session: '{{ cyberark_session }}'
         state: absent
       register: cyberark_result
 
     - name: Show message
-      debug:
+      ansible.builtin.debug:
         var: cyberark_result
-
