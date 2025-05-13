@@ -1,7 +1,7 @@
 # CyberArk Identity Security Platform (ISP) Collection
 
 <!-- please note this has to be a absolute URL since otherwise it will not show up on galaxy.ansible.com -->
-![cyberark logo|](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/images/full-cyberark-logo.jpg?raw=true)
+![cyberark logo|](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/images/full-cyberark-logo.jpg)
 
 *************
 
@@ -61,7 +61,7 @@ There is a list of different modules to perform different tasks:
 
 - Using the CyberArk Privilege Cloud REST APIs, authenticate and obtain an auth token to be passed as a variable in playbooks
 - Logoff of an authenticated REST API session<br>
-[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_authentication.md)
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_authentication.md)
 
 #### cyberark_user
 
@@ -69,7 +69,7 @@ There is a list of different modules to perform different tasks:
 - Delete a CyberArk User
 - Update a CyberArk User's account parameters
 - Enable/Disable, change password, mark for change at next login, etc
-<br>[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_user.md)<br/>
+<br>[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_user.md)<br/>
 
 #### cyberark_account
 
@@ -78,14 +78,14 @@ There is a list of different modules to perform different tasks:
 - Modify account properties
 - Rotatate privileged credentials
 - Retrieve account password<br>
-[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_account.md)
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_account.md)
 
 #### cyberark_safe
 
 - Create Safe
 - Delete Safe
 - Update Safe
-[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_safe.md)
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_safe.md)
 
 #### cyberark_safe_member
 
@@ -93,7 +93,7 @@ There is a list of different modules to perform different tasks:
 - Delete Safe Member
 - Update Safe Member
 - Add/Update/Delete Safe Member Permissions
-[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_safe_member.md)
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_safe_member.md)
 
 #### cyberark_application
 
@@ -101,12 +101,12 @@ There is a list of different modules to perform different tasks:
 - Delete Aplication
 - Update Application
 - Add/Update/Delete Application Authentication
-[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_application.md)
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_application.md)
 
 #### cyberark_credential
 
 - Using CyberArk Central Credential Provider (CCP), to securely retrieve secrets and account properties from EPV to be registered for use in playbooks<br>
-[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/master/docs/cyberark_credential.md)
+[Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_credential.md)
 
 
 ### Author Information
@@ -123,4 +123,4 @@ As Red Hat Ansible Certified Content, this collection is entitled to support thr
 
 Apache License
 
-For the full license text see [LICENSE](https://github.com/cyberark/ansible-isp-collection/blob/master/LICENSE)
+For the full license text see [LICENSE](https://github.com/cyberark/ansible-isp-collection/blob/main/LICENSE)
