@@ -23,21 +23,44 @@ This module allows admins to Add, Delete, and Modify CyberArk Vault Users.  The 
     
 ```
 options:
+    api_base_url:
+        description:
+            - A string containing the base URL of the server hosting
+              CyberArk's Privileged Cloud ISP SDK.
+        type: str
+        required: true
     username:
         description:
-            - The name of the user who will be queried (for details), added, updated or deleted.
+            - The name of the user who will be queried (for details), added,
+              updated or deleted.
         type: str
         required: true
     state:
         description:
-            - Specifies the state needed for the user present for create user, absent for delete user.
+            - Specifies the state needed for the user present for create user,
+              absent for delete user.
         type: str
         choices: [ absent, present ]
         default: present
+    logging_level:
+        description:
+            - Parameter used to define the level of troubleshooting output to
+              the C(logging_file) value.
+        required: false
+        choices: [NOTSET, DEBUG, INFO]
+        type: str
+    logging_file:
+        description:
+            - Setting the log file name and location for troubleshooting logs.
+        required: false
+        default: /tmp/ansible_cyberark.log
+        type: str
     cyberark_session:
         description:
-            - Dictionary set by a CyberArk authentication containing the different values to perform actions on a logged-on CyberArk session,
-              please see M(cyberark_authentication) module for an example of cyberark_session.
+            - Dictionary set by a CyberArk authentication containing the
+              different values to perform actions on a logged-on CyberArk
+              session, please see M(cyberark.isp.cyberark_authentication) module for an
+              example of cyberark_session.
         type: dict
         required: true
     initial_password:
@@ -46,41 +69,56 @@ options:
             - This password must meet the password policy requirements.
             - This parameter is required when state is present -- Add User.
         type: str
-    new_password:
+    password:
         description:
-            - The user updated password. Make sure that this password meets the password policy requirements.
+            - The password that the user will use to log on for the first time.
+            - This password must meet the password policy requirements.
+            - Not required for PKI or LDAP.
         type: str
-    email:
+    authentication_method:
         description:
-            - The user email address.
+            - The user authentication method.
         type: str
-    first_name:
+        choices: [AuthTypePass, AuthTypeRadius, AuthTypeLDAP]
+    change_pass_on_next_logon:
         description:
-            - The user first name.
-        type: str
-    last_name:
-        description:
-            - The user last name.
-        type: str
-    change_password_on_the_next_logon:
-        description:
-            - Whether or not the user must change their password in their next logon.
+            - Whether or not the user must change their password in their
+              next logon.
         type: bool
         default: false
+    password_never_expires:
+        description:
+            - Password never expires.
+        type: bool
+        default: false
+    domain_name:
+        description:
+            - The name of the user domain.
+        type: str
+    member_type:
+        description:
+            - The type of member.
+        type: str
     expiry_date:
         description:
-            - The date and time when the user account will expire and become disabled.
+            - The date and time when the user account will expire and become
+              disabled.
         type: str
-    user_type_name:
+    user_type:
         description:
             - The type of user.
             - The parameter defaults to C(EPVUser).
         type: str
-    disabled:
+    non_authorized_interfaces:
+        description:
+            - The CyberArk interfaces that this user is not authorized to use.
+        type: list
+        elements: str
+    enable_user:
         description:
             - Whether or not the user will be disabled.
         type: bool
-        default: false
+        default: true
     location:
         description:
             - The Vault Location for the user.
@@ -88,7 +126,177 @@ options:
     group_name:
         description:
             - The name of the group the user will be added to.
+            - Causes an additional lookup in cyberark
+            - Will be ignored if vault_id is used
+            - Will cause a failure if group is missing or more than one group with that name exists
         type: str
+    timeout:
+        description:
+            - How long to wait for the server to send data before giving up
+        type: float
+        default: 10
+    vault_id:
+        description:
+            - The ID of the user group to add the user to
+            - Prefered over group_name
+        type: int
+    distinguished_name:
+        description:
+            - The user's distinguished name. The usage is for PKI authentication,
+            - this will match the certificate Subject Name or domain name.
+        type: str
+    vault_authorization:
+        description:
+            - A list of authorization options for this user.
+            - Options can include AddSafes and AuditUsers
+            - The default provides backwards compatability with older versions of the collection
+        type: list
+        elements: str
+        choices:
+          - AddSafes
+          - AuditUsers
+          - AddUpdateUsers
+          - ResetUsersPasswords
+          - ActivateUsers
+          - AddNetworkAreas
+          - ManageDirectoryMapping
+          - ManageServerFileCategories
+          - BackupAllSafes
+          - RestoreAllSafes
+        default:
+          - AddSafes
+          - AuditUsers
+    business_address:
+        description:
+            - The user's postal address, including city, state, zip, country and street
+        type: dict
+        suboptions:
+            workStreet:
+                description: Street for work address.
+                type: str
+                default: ""
+            workCity:
+                description: City for work address.
+                type: str
+                default: ""
+            workState:
+                description: State.
+                type: str
+                default: ""
+            workZip:
+                description: Zip code.
+                type: str
+                default: ""
+            workCountry:
+                description: Country.
+                type: str
+                default: ""
+    internet:
+        description:
+            - The user's email addresses, including home page and email, business and other email
+        type: dict
+        suboptions:
+            homePage:
+                description: Homepage URL.
+                type: str
+                default: ""
+            homeEmail:
+                description: Personal email.
+                type: str
+                default: ""
+            businessEmail:
+                description: Work email.
+                type: str
+                default: ""
+            otherEmail:
+                description: Other email.
+                type: str
+                default: ""
+    phones:
+        description:
+            - The user's phone numbers, including home, business, cellular, fax and pager
+        type: dict
+        suboptions:
+            homeNumber:
+                description: Home phone number.
+                type: str
+                default: ""
+            businessNumber:
+                description: Work phone number.
+                type: str
+                default: ""
+            cellularNumber:
+                description: Cellular phone number.
+                type: str
+                default: ""
+            faxNumber:
+                description: Fax number.
+                type: str
+                default: ""
+            pagerNumber:
+                description: Pager number.
+                type: str
+                default: ""
+    description:
+        description:
+            - Notes and comments.
+        type: str
+    personal_details:
+        description:
+            - The user's personal details including
+            - firstName, middleName, lastName, address
+            - city, state, zip, country
+            - title, organization, department, profession
+        type: dict
+        suboptions:
+            firstName:
+                description: First name.
+                default: ""
+                type: str
+            lastName:
+                description: Last name.
+                default: ""
+                type: str
+            middleName:
+                description: Middle Name.
+                default: ""
+                type: str
+            street:
+                description: Street.
+                default: ""
+                type: str
+            city:
+                description: City.
+                default: ""
+                type: str
+            state:
+                description: State.
+                default: ""
+                type: str
+            zip:
+                description: Zip.
+                default: ""
+                type: str
+            country:
+                description: Country.
+                default: ""
+                type: str
+            title:
+                description: Title.
+                default: ""
+                type: str
+            organization:
+                description: Organization.
+                default: ""
+                type: str
+            department:
+                description: Department.
+                default: ""
+                type: str
+            profession:
+                description: Profession.
+                default: ""
+                type: str
 ```
 ## Example Playbooks
 

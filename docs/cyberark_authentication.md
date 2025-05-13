@@ -19,6 +19,7 @@ options:
         description:
             - The type of grant for the authentication.
         type: str
+        choices: [client_credentials]
     client_id:
         description:
             - The login name of the service account for authentication.

@@ -22,7 +22,7 @@ options:
             - Specifies the state needed for the user present for create user,
               absent for delete user.
         type: str
-        choices: [ absent, present ]
+        choices: [absent, present]
         default: present
     logging_level:
         description:
@@ -30,7 +30,6 @@ options:
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -42,7 +41,7 @@ options:
         description:
             - Dictionary set by a CyberArk authentication containing the
               different values to perform actions on a logged-on CyberArk
-              session, please see M(cyberark.isp.cyberark_authentication) module for an
+              session. Please see M(cyberark.isp.cyberark_authentication) module for an
               example of cyberark_session.
         type: dict
         required: true
@@ -66,15 +65,16 @@ options:
         description:
             - The number of days that password versions are saved in the Safe.
         type: int
+        default: 7
     auto_purge_enabled:
         description:
-            - Whether or not to automatically purge files after the end of the Object History 
+            - Whether or not to automatically purge files after the end of the Object History
               Retention Period defined in the Safe properties.
         type: bool
         default: false
     timeout:
         description:
-            - How long to wait for the server to send data before giving up
+            - How long to wait for the server to send data before giving up.
         type: float
         default: 10
 ```

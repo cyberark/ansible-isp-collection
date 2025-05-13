@@ -96,8 +96,8 @@ options:
     authentication:
         description:
             - A list of authentication methods for the application.
-            - Options can include AddSafes and AuditUsers
-            - The default provides backwards compatability with older versions of the collection
+            - Options can include AddSafes and AuditUsers.
+            - The default provides backwards compatability with older versions of the collection.
         type: list
         elements: dict
         suboptions:
@@ -110,13 +110,8 @@ options:
                 description:
                     - The type of authentication.
                 type: str
-                choices:
-                    - path
-                    - osUser
-                    - hash
-                    - machineAddress
-                    - certificateSerialNumber
-                    - certificateAttr
+                required: true
+                choices: [path, osUser, hash, machineAddress, certificateSerialNumber, certificateAttr]
             AuthValue:
                 description:
                     - The content of the authentication.
@@ -133,13 +128,16 @@ options:
             Subject:
                 description:
                     - The content of the subject attribute for certificateAttr AuthType.
-                type: str
+                type: list
+                elements: str
             Issuer:
                 description: The content of the issuer attribute for certificateAttr AuthType.
-                type: str
+                type: list
+                elements: str
             SubjectAlternativeName:
                 description: The content of the subject alternative name attribute for certificateAttr AuthType.
-                type: str
+                type: list
+                elements: str
     timeout:
         description:
             - How long to wait for the server to send data before giving up

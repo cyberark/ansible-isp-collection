@@ -5,11 +5,9 @@ This module allows admins to manage platforms with the following actions: activa
 #### Available Fields
     
 ```
-options:
     api_base_url:
         description:
-            - A string containing the base URL of the server hosting
-              CyberArk's Privileged Cloud ISP SDK.
+            - The base URL for PVWA REST APIs.
         type: str
         required: true
     platform_id:
@@ -19,22 +17,21 @@ options:
         required: true
     duplicate_from_platform:
         description:
-            - The unique ID/Name of the platform to duplicate from in case of a non-existing
-              platform and state is specified as active or inactive.
+            - The unique ID/Name of the platform to duplicate from.
         type: str
         required: false
     platform_class:
         description:
-            - The class/kind of platform.
-        choices: [ target, dependent, group, rotationalGroup ]
-        default: target
+            - Class of the platform referenced.
         type: str
-        required: false
+        choices: [target, dependent, group, rotationalGroup]
+        default: target
     state:
         description:
-            - Specifies the state needed for the platform. Either active, inactive or absent.
+            - Specifies the state needed for the user present for create user,
+              absent for delete user.
         type: str
-        choices: [ active, inactive, absent]
+        choices: [absent, active, inactive]
         default: active
     logging_level:
         description:
@@ -42,7 +39,6 @@ options:
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -63,7 +59,6 @@ options:
             - How long to wait for the server to send data before giving up
         type: float
         default: 10
-        required: false
 ```
 ## Example Playbooks
 

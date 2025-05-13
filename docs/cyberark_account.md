@@ -89,49 +89,62 @@ With the `identified_by` parameter set the `cyberark_account` module will select
 options:
     state:
         description:
-            - Assert the desired state of the account C(present) to creat or update and account object. Set to C(absent) for deletion of an account object
-        required: true
+            - Assert the desired state of the account C(present) to create or
+              update and account object. Set to C(absent) for deletion of an
+              account object. Set to C(retrieve) to get the account object including the password.
+        required: false
         default: present
-        choices: [present, absent]
+        choices: [present, absent, retrieve]
         type: str
     logging_level:
         description:
-            - Parameter used to define the level of troubleshooting output to the C(logging_file) value
-        required: true
+            - Parameter used to define the level of troubleshooting output to
+              the C(logging_file) value.
+        required: false
         choices: [NOTSET, DEBUG, INFO]
         type: str
     logging_file:
         description:
-            - Setting the log file name and location for troubleshooting logs
+            - Setting the log file name and location for troubleshooting logs.
         required: false
         default: /tmp/ansible_cyberark.log
         type: str
     api_base_url:
         description:
-            - A string containing the base URL of the server hosting CyberArk's Privileged Account Security Web Services SDK
-            - Example: U(https://<IIS_Server_Ip>/PasswordVault/api/)
+            - A string containing the base URL of the server hosting CyberArk's
+              Privileged Account Security Web Services SDK.
+            - Example U(https://<IIS_Server_Ip>/PasswordVault/api/)
         required: true
         type: str
     validate_certs:
         description:
-            - If C(false), SSL certificate chain will not be validated.  This should only set to C(true) if you have a root CA certificate installed on each node.
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
         required: false
         default: true
         type: bool
     cyberark_session:
         description:
-            - Dictionary set by a CyberArk authentication containing the different values to perform actions on a logged-on CyberArk session, please see M(cyberark_authentication) module for an example of cyberark_session.
+            - Dictionary set by a CyberArk authentication containing the
+              different values to perform actions on a logged-on CyberArk
+              session, please see M(cyberark.isp.cyberark_authentication) module for an
+              example of cyberark_session.
         required: true
         type: dict
-    identified_by: 
+    identified_by:
         description:
-            - When an API call is made to Get Accounts, often times the default parameters passed will identify more than one account. This parameter is used to confidently identify a single account when the default query can return multiple results.
+            - When an API call is made to Get Accounts, often times the default
+              parameters passed will identify more than one account. This
+              parameter is used to confidently identify a single account when
+              the default query can return multiple results.
         required: false
         default: username,address,platform_id
-        type: str        
+        type: str
     safe:
         description:
-            - The safe in the Vault where the privileged account is to be located
+            - The safe in the Vault where the privileged account is to be
+              located.
         required: true
         type: str
     platform_id:
@@ -141,10 +154,11 @@ options:
         type: str
     address:
         description:
-            - The adress of the endpoint where the privileged account is located
+            - The address of the endpoint where the privileged account is
+              located.
         required: false
         type: str
-    name:
+    account_name:
         description:
             - The ObjectID of the account
         required: false
@@ -161,66 +175,86 @@ options:
             - The initial password for the creation of the account
         required: false
         type: str
+    new_secret:
+        description:
+            - The new secret/password to be stored in CyberArk Vault.
+        type: str
     username:
         description:
-            - The username associated with the account
+            - The username associated with the account.
         required: false
         type: str
-    secret_management
+    secret_management:
         description:
-            - Set of parameters associated with the management of the credential
+            - Set of parameters associated with the management of the
+              credential.
         required: false
-            suboptions:
-                automatic_management_enabled:
-                    description:
-                        - Parameter that indicates whether the CPM will manage the password or not
-                    default: true
-                    type: bool
-                manual_management_reason:
-                    description:
-                        - String value indicating why the CPM will NOT manage the password
-                    type: str
-                management_action:
-                    description:
-                        - CPM action flag to be placed on the account object for credential rotation
-                    choices: [change, change_immediately, reconcile]
-                    type: str
-                new_secret:
-                    description:
-                        - The actual password value that will be assigned for the CPM action to be taken
-                    type: str
-                perform_management_action:
-                    description:
-                        - C(always) will perform the management action in every action
-                        - C(on_create) will only perform the management action right after the account is created
-                    choices: [always, on_create]
-                    default: always
-                    type: str
+        type: dict
+        suboptions:
+            automatic_management_enabled:
+                description:
+                    - Parameter that indicates whether the CPM will manage
+                        the password or not.
+                default: false
+                type: bool
+            manual_management_reason:
+                description:
+                    - String value indicating why the CPM will NOT manage
+                        the password.
+                type: str
+            management_action:
+                description:
+                    - CPM action flag to be placed on the account object
+                        for credential rotation.
+                choices: [change, change_immediately, reconcile]
+                type: str
+            new_secret:
+                description:
+                    - The actual password value that will be assigned for
+                        the CPM action to be taken.
+                type: str
+            perform_management_action:
+                description:
+                    - C(always) will perform the management action in
+                        every action.
+                    - C(on_create) will only perform the management action
+                        right after the account is created.
+                choices: [always, on_create]
+                default: always
+                type: str
     remote_machines_access:
         description:
-            - Set of parameters for defining PSM endpoint access targets
+            - Set of parameters for defining PSM endpoint access targets.
         required: false
         type: dict
-            suboptions:
-                remote_machines:
-                    description:
-                        - List of targets allowed for this account 
-                    type: str
-                access_restricted_to_remote_machines:
-                    description:
-                        - Whether or not to restrict access only to specified remote machines
-                    type: bool
+        suboptions:
+            remote_machines:
+                description:
+                    - List of targets allowed for this account.
+                type: str
+            access_restricted_to_remote_machines:
+                description:
+                    - Whether or not to restrict access only to specified
+                        remote machines.
+                type: bool
     platform_account_properties:
         description:
-            - Object containing key-value pairs to associate with the account, as defined by the account platform. These properties are validated against the mandatory and optional properties of the specified platform's definition. Optional properties that do not exist on the account will not be returned here. Internal properties are not returned.
+            - Object containing key-value pairs to associate with the account,
+              as defined by the account platform. These properties are
+              validated against the mandatory and optional properties of the
+              specified platform's definition. Optional properties that do not
+              exist on the account will not be returned here. Internal
+              properties are not returned.
         required: false
         type: dict
-            suboptions:
-                KEY:
-                    description:
-                        - Freeform key value associated to the mandatory or optional property assigned to the specified Platform's definition.
-                    aliases: [Port, ExtrPass1Name, database]
-                    type: str
+        suboptions:
+            KEY:
+                description:
+                    - Freeform key value associated to the mandatory or
+                        optional property assigned to the specified
+                        Platform's definition.
+                aliases: [Port, ExtrPass1Name, database]
+                type: str
 ```
 
 ## Example Playbooks

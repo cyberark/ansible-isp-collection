@@ -27,68 +27,78 @@ If you use the `object` parameter then there is no need to use any other paramet
 ```
 options:
     api_base_url:
-        description:
-            - A string containing the base URL of the server hosting the Central Credential Provider
+        type: str
         required: true
-        type: string
-    validate_certs:
         description:
-            - If C(false), SSL certificate chain will not be validated.  This should only set to C(true) if you have a root CA certificate installed on each node.
+            - A string containing the base URL of the server hosting the
+              Central Credential Provider.
+    validate_certs:
         type: bool
         required: false
-        default: false
-        type: bool
+        default: true
+        description:
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
     app_id:
-        description:
-            - A string containing the Application ID authorized for retrieving the credential
+        type: str
         required: true
-        type: string
+        description:
+            - A string containing the Application ID authorized for retrieving
+              the credential.
     query:
-        description:
-            - A string containing details of the object being queried
+        type: str
         required: true
-        parameters:
-            Safe=<safe name>
-            Folder=<folder name within safe>
-            Object=<object name>
-            UserName=<username of object>
-            Address=<address listed for object>
-            Database=<optional file category for database objects>
-            PolicyID=<platform id managing object>
-    connection_timeout:
         description:
-            - An integer value of the allowed time before the request returns failed
+            - A string containing details of the object being queried;
+            - Possible parameters could be Safe, Folder, Object
+            - (internal account name), UserName, Address, Database,
+            - PolicyID.
+    connection_timeout:
+        type: int
         required: false
         default: '30'
-        type: integer
+        description:
+            - An integer value of the allowed time before the request returns
+              failed.
     query_format:
-        description:
-            - The format for which your Query will be received by the CCP
+        type: str
         required: false
-        default: 'Exact'
+        default: Exact
         choices: [Exact, Regexp]
-        type: choice
-    fail_request_on_password_change:
         description:
-            - A boolean parameter for completing the request in the middle of a password change of the requested credential
+            - The format for which your Query will be received by the CCP.
+    fail_request_on_password_change:
+        type: bool
         required: false
         default: false
-        type: bool
+        description:
+            - A boolean parameter for completing the request in the middle of
+              a password change of the requested credential.
     client_cert:
-        description:
-            - A string containing the file location and name of the client certificate used for authentication
+        type: str
         required: false
-        type: string
+        description:
+            - A string containing the file location and name of the client
+              certificate used for authentication.
     client_key:
-        description:
-            - A string containing the file location and name of the private key of the client certificate used for authentication
+        type: str
         required: false
-        type: string
+        description:
+            - A string containing the file location and name of the private
+              key of the client certificate used for authentication.
     reason:
-        description:
-            - Reason for requesting credential if required by policy
+        type: str
         required: false
-        type: string
+        description:
+            - Reason for requesting credential if required by policy;
+            - It must be specified if the Policy managing the object
+            - requires it.
+    path:
+        type: str
+        required: false
+        description:
+            - String override for the context path
 ```
 
 

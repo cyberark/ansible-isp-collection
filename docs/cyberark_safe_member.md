@@ -30,7 +30,6 @@ options:
               the C(logging_file) value.
         required: false
         choices: [NOTSET, DEBUG, INFO]
-        default: NOTSET
         type: str
     logging_file:
         description:
@@ -51,6 +50,12 @@ options:
             - The CyberArk user name or group name of the Safe member.
         type: str
         required: true
+    member_type:
+        description:
+            - The type of safe member.
+        type: str
+        required: true
+        choices: [User, Group, Role]
     search_in:
         description:
             - You can search within the domain using the domain ID,
@@ -66,7 +71,6 @@ options:
         description:
             - The permissions that the user or group has on this Safe.
         type: dict
-        elements: dict
         suboptions:
             useAccounts:
                 description:
@@ -127,7 +131,7 @@ options:
                 default: false
             manageSafe:
                 description:
-                    - Perform administrative tasks in the Safe, including:
+                    - Perform administrative tasks in the Safe, including
                     - Update Safe properties
                     - Recover the Safe
                     - Delete the Safe
