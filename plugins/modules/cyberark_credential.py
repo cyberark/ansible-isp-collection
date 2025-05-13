@@ -100,7 +100,6 @@ options:
         required: false
         description:
             - String override for the context path
-
 """
 
 EXAMPLES = """
