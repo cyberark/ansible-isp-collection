@@ -5,13 +5,12 @@
 
 namespace: "cyberark"
 name: "isp"
-version: 1.0.1
+version: 1.0.2
 readme: README.md
 authors:
-  - CyberArk Business Development Technical Team 
-      - @cyberark-bizdev
-      - @nitsan-tzur
-      - @compostCY
+  - @cyberark-bizdev
+  - @nitsan-tzur
+  - @compostCY
 description: "This is a Collection of the CyberArk ISP Ansible Security Automation toolkit."
 license: [Apache-2.0]
 license_file: https://github.com/cyberark/ansible-isp-collection/blob/main/LICENSE
