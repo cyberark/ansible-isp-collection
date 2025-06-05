@@ -270,7 +270,7 @@ options:
         client_secret: "{{ password_object.passprops.username }}"
 
     - name: Creating an Account using the PAS WebServices SDK
-      cyberark.pas.cyberark_account:
+      cyberark.isp.cyberark_account:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         logging_level: DEBUG
         identified_by: "address,username"
@@ -289,7 +289,7 @@ options:
       register: cyberarkaction
     
     - name: Rotate credential via reconcile and providing the password to be changed to
-      cyberark.pas.cyberark_account:
+      cyberark.isp.cyberark_account:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         identified_by: "address,username"
         safe: "Domain_Admins"
@@ -307,7 +307,7 @@ options:
       register: reconcileaccount
     
     - name: Update password only in VAULT
-      cyberark.pas.cyberark_account:
+      cyberark.isp.cyberark_account:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         identified_by: "address,username"
         safe: "Domain_Admins"
@@ -320,7 +320,7 @@ options:
       register: updateaccount
 
     - name: Retrieve account and password
-      cyberark.pas.cyberark_account:
+      cyberark.isp.cyberark_account:
         api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         identified_by: "address,username"
         safe: "Domain_Admins"

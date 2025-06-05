@@ -1,7 +1,7 @@
 # CyberArk Identity Security Platform (ISP) Collection
 
 <!-- please note this has to be a absolute URL since otherwise it will not show up on galaxy.ansible.com -->
-![cyberark logo|](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/images/full-cyberark-logo.jpg)
+![cyberark logo|](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/images/full-cyberark-logo.jpg?raw=true)
 
 *************
 

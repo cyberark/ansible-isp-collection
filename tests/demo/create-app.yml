@@ -1,0 +1,211 @@
+---
+- name: Create Application Infrastructure
+
+  hosts: localhost
+
+  collections:
+    - cyberark.isp
+
+  vars:
+    cyberark_ccp_base_url: https://BASE_URL_FOR_CCP
+    cyberark_rest_base_url: https://BASE_URL_FOR_REST_API
+    mysql_db: MYSQL_DB
+    mysql_username: MYSQL_USERNAME
+    db_container_address: DB_CONTAINER_ADDRESS
+
+  tasks:
+
+    - name: Make sure pymysql is present
+      pip:
+        name: pymysql
+        state: present
+
+    - name: Randomized Password for MySQL Database Root User
+      set_fact:
+        mysql_root_password: "{{ lookup('community.general.random_string', length=12, min_lower=1, min_upper=1, min_numeric=1, min_special=1, override_special='_=+%') }}"
+      no_log: yes
+
+    - name: Randomized Password for MySQL Database User
+      set_fact:
+        mysql_password: "{{ lookup('community.general.random_string', length=12, min_lower=1, min_upper=1, min_numeric=1, min_special=1, override_special='_=+%') }}"
+      no_log: yes
+
+    - name: Create Docker Network
+      docker_network:
+        name: mynetwork
+        state: present
+
+
+    - name: Create MySQL container
+      community.docker.docker_container:
+        name: db
+        image: "mysql"
+        env:
+          MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+          MYSQL_DATABASE: {{ mysql_db }}  
+          priv: "*.*:ALL"
+          MYSQL_USER: "{{ mysql_username }}"
+          MYSQL_PASSWORD: "{{ mysql_password }}"
+          MYSQL_HOST: localhost 
+        state: started
+        networks:
+          - name: mynetwork
+        ports:
+          - "3306:3306"
+        volumes:
+          - "./mysql/dump.mysql:/docker-entrypoint-initdb.d/1.sql"
+
+    - name: Run phpMyAdmin Container
+      community.docker.docker_container:
+        name: phpmyadmin-container
+        image: phpmyadmin/phpmyadmin:latest
+        networks: 
+          - name: mynetwork
+        env:
+          PMA_HOST: db
+          PMA_PORT: "3306"
+        ports:
+          - "8080:80"
+        volumes:
+          - ./html:/var/www/html/test
+          - ./cert:/var/www/cert
+          - ./images:/var/www/html/images
+        state: started
+
+    - name: Retrieve credential for PCloud access
+      cyberark_credential:
+        api_base_url: "{{ cyberark_ccp_base_url }}"
+        validate_certs: false
+        client_cert: ./cert/client.pem
+        client_key: ./cert/cert.key
+        app_id: "Ansible_AppID"
+        query: "safe=Ansible-Main;Object=restapiuser"
+      register: restapicredential
+
+    - name: Logon to CyberArk REST API
+      cyberark_authentication:
+        api_base_url: "{{ restapicredential.result.url }}"
+        client_id: "{{ restapicredential.result.username }}"
+        client_secret: "{{ restapicredential.result.Content }}"
+
+    - name: Application for TestApplication
+      cyberark_application:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        app_id: "TestApplication"
+        authentication:
+          - AuthType: certificateSerialNumber
+            AuthValue: "2D8AB780DC258CE5"
+        state: present
+        cyberark_session: '{{ cyberark_session }}'
+      register: cyberark_result
+
+    - name: Safe
+      cyberark_safe:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        description: "Safe for TestApplication"
+        safe_name: "SAFE-TestApplication"
+        managing_cpm: "CPM"
+        number_of_days_retention: 0
+        state: present
+        cyberark_session: '{{ cyberark_session }}'
+      register: cyberark_result
+
+    - name: Add Application User as member
+      cyberark_safe_member:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        safe_name: "SAFE-TestApplication"
+        member_name: "TestApplication"
+        member_type: "User"
+        permissions: 
+          retrieveAccounts: True
+          listAccounts: True
+          viewSafeMembers: True
+        cyberark_session: '{{ cyberark_session }}'
+        state: present
+      register: cyberark_result
+
+    - name: Add CP Provider User as member
+      cyberark_safe_member:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        safe_name: "SAFE-TestApplication"
+        member_name: "PROV_USER"
+        member_type: "User"
+        permissions: 
+          retrieveAccounts: True
+          listAccounts: True
+          viewSafeMembers: True
+        cyberark_session: '{{ cyberark_session }}'
+        state: present
+      register: cyberark_result
+
+    - name: Add "BD TECH" Role as member of application's safe
+      cyberark_safe_member:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        safe_name: "SAFE-TestApplication"
+        member_name: "BD Tech"
+        member_type: "Role"
+        permissions: 
+          useAccounts: True
+          retrieveAccounts: True
+          listAccounts: True
+          addAccounts: True
+          updateAccountContent: True
+          updateAccountProperties: True
+          initiateCPMAccountManagementOperations: True
+          specifyNextAccountContent: True
+          renameAccounts: True
+          deleteAccounts: True
+          unlockAccounts: True
+          manageSafe: True
+          manageSafeMembers: True
+          backupSafe: True
+          viewAuditLog: True
+          viewSafeMembers: True
+          requestsAuthorizationLevel1: True
+          requestsAuthorizationLevel2: False
+          accessWithoutConfirmation: True
+          createFolders: True
+          deleteFolders: True
+          moveAccountsAndFolders: True
+        cyberark_session: '{{ cyberark_session }}'
+        state: present
+      register: cyberark_result
+
+    - name: Onboard MySQL Root Account
+      cyberark_account:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        identified_by: "address,platform_account_properties.Database,username"
+        safe: "Ansible-Main"
+        address: "{{ db_container_address }}"
+        username: "root"
+        platform_id: MySQL
+        secret: "{{ mysql_root_password }}"
+        new_secret: "{{ mysql_root_password }}"
+        platform_account_properties:
+          Database: "{{ mysql_db }}"
+        secret_management:
+          automatic_management_enabled: false
+          management_action: "change"
+          perform_management_action: "always"
+        state: present
+        cyberark_session: "{{ cyberark_session }}"
+      register: cyberark_account
+
+    - name: Onboard MySQL User account
+      cyberark_account:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        identified_by: "address,platform_account_properties.Database,username"
+        safe: "SAFE-TestApplication"
+        address: "{{ db_container_address }}"
+        username: "{{ mysql_username }}"
+        platform_id: MySQL
+        account_name: TestApplication-mysqluser
+        secret: "{{ mysql_password }}"
+        new_secret: "{{ mysql_password }}"
+        platform_account_properties:
+          Database: "{{ mysql_db }}"
+        secret_management:
+          automatic_management_enabled: true
+        state: present
+        cyberark_session: "{{ cyberark_session }}"
+      register: cyberark_account

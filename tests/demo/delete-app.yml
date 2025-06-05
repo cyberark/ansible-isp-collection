@@ -1,0 +1,91 @@
+---
+- name: Create db container and connect to network
+  hosts: localhost
+
+  collections:
+    - cyberark.isp
+
+  vars:
+    cyberark_ccp_base_url: https://BASE_URL_FOR_CCP
+    cyberark_rest_base_url: https://BASE_URL_FOR_REST_API
+    mysql_db: MYSQL_DB
+    mysql_username: MYSQL_USERNAME
+    db_container_address: DB_CONTAINER_ADDRESS
+
+  tasks:
+
+    - name: Delete MySQL container
+      community.docker.docker_container:
+        name: db
+        state: absent
+
+    - name: Delete phpMyAdmin Container
+      community.docker.docker_container:
+        name: phpmyadmin-container
+        state: absent
+
+    - name: Delete Docker Network
+      docker_network:
+        name: mynetwork
+        state: absent
+
+    - name: Retrieve credential for PCloud access
+      cyberark_credential:
+        api_base_url: "{{ cyberark_ccp_base_url }}"
+        validate_certs: false
+        client_cert: ./cert/client.pem
+        client_key: ./cert/cert.key
+        app_id: "Ansible_AppID"
+        query: "safe=Ansible-Main;Object=restapiuser"
+      register: restapicredential
+
+    - name: Logon to CyberArk REST API using the information retrieved by cyberark_credential module
+      cyberark_authentication:
+        api_base_url: "{{ restapicredential.result.url }}"
+        client_id: "{{ restapicredential.result.username }}"
+        client_secret: "{{ restapicredential.result.Content }}"
+
+    - name: Delete MySQL root Account
+      cyberark_account:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        identified_by: "address,platform_account_properties.Database,username"
+        safe: "Ansible-Main"
+        address: "{{ db_container_address }}"
+        username: "root"
+        platform_id: MySQL
+        platform_account_properties:
+          Database: "{{ mysql_db }}"
+        state: absent
+        cyberark_session: "{{ cyberark_session }}"
+      register: cyberark_account
+
+
+    - name: Delete MySQL User Account
+      cyberark_account:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        identified_by: "address,platform_account_properties.Database,username"
+        safe: "SAFE-TestApplication"
+        address: "{{ db_container_address }}"
+        username: "{{ mysql_username }}"
+        platform_id: MySQL
+        platform_account_properties:
+          Database: "{{ mysql_db }}"
+        state: absent
+        cyberark_session: "{{ cyberark_session }}"
+      register: cyberark_account
+
+    - name: Delete Safe
+      cyberark_safe:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        safe_name: "SAFE-TestApplication"
+        state: absent
+        cyberark_session: '{{ cyberark_session }}'
+      register: cyberark_result
+
+    - name: Delete Application for TestApplication
+      cyberark_application:
+        api_base_url: "{{ cyberark_rest_base_url }}"
+        app_id: "TestApplication"
+        state: absent
+        cyberark_session: '{{ cyberark_session }}'
+      register: cyberark_result

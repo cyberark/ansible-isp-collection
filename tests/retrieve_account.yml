@@ -12,7 +12,7 @@
 
 
     - name: Retrieve account and password
-      cyberark.pas.cyberark_account:
+      cyberark.isp.cyberark_account:
         identified_by: "address,username"
         safe: "Test"
         address: "cyberark.local"

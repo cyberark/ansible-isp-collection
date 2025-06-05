@@ -1,0 +1,8 @@
+GRANT ALL PRIVILEGES ON *.* TO 'test';
+
+CREATE TABLE IF NOT EXISTS demo.demo (
+    message varchar(255) NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+INSERT INTO demo.demo (message) VALUES ('<div style="color:blue;font-size:20px;"><B>Welcome!!!</B></div><BR/>If you are seeing this message, we have successfully connected PHP to our backend MySQL database!<BR/>Retrieving the credential from <B>CyberArk</B> using <B>Ansible ISP Collection</B>');
+
