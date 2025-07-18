@@ -398,7 +398,8 @@ def main():
             location=dict(type="str"),
             managing_cpm=dict(type="str"),
             number_of_versions_retention=dict(type="int"),
-            number_of_days_retention=dict(type="int", default=7),
+            #HOTFIX: See issue #1 on Parent Repository.
+            number_of_days_retention=dict(type="int"),
             auto_purge_enabled=dict(type="bool", default=False),
             logging_level=dict(
                 type="str", choices=["NOTSET", "DEBUG", "INFO"]
