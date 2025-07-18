@@ -228,6 +228,17 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
     api_base_url = module.params["api_base_url"]
     validate_certs = False
 
+    # Get safe days retention attribute
+    days_retention_set = module.params.get("number_of_days_retention", None) is not None
+    # Get safe versions retention attribute
+    version_retention_set = module.params.get("number_of_versions_retention", None) is not None
+
+    # Logic for handling bad request from the user where both are specified.
+    if days_retention_set and version_retention_set:
+        module.fail_json(
+            msg="You may only specify one retention parameter. You have specified both Days and Versions. Please choose one or the other."
+        )
+
     # Prepare result, paylod, and headers
     result = {}
     payload = {"safeName": safe_name}
@@ -252,11 +263,13 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
     if "managing_cpm" in module.params and module.params["managing_cpm"] is not None:
         payload["managingCPM"] = module.params["managing_cpm"]
 
-    if "number_of_versions_retention" in module.params and module.params["number_of_versions_retention"] is not None:
-        payload["numberOfVersionsRetention"] = module.params["number_of_versions_retention"]
-
-    if "number_of_days_retention" in module.params and module.params["number_of_days_retention"] is not None:
+    # Logic for retaining the default Day-Retention of 7 Days and allowing users to select either versions or days.
+    if days_retention_set:
         payload["numberOfDaysRetention"] = module.params["number_of_days_retention"]
+    if version_retention_set:
+        payload["numberOfVersionsRetention"] = module.params["number_of_versions_retention"]
+    if not days_retention_set and not version_retention_set:
+        payload["numberOfDaysRetention"] = 7
 
     if "auto_purge_enabled" in module.params and module.params["auto_purge_enabled"] is not None:
         payload["AutoPurgeEnabled"] = module.params["auto_purge_enabled"]
