@@ -258,6 +258,10 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
     if "number_of_days_retention" in module.params and module.params["number_of_days_retention"] is not None:
         payload["numberOfDaysRetention"] = module.params["number_of_days_retention"]
 
+    if ("number_of_versions_retention" in module.params and module.params["number_of_versions_retention"] is None and
+       "number_of_days_retention" in module.params and module.params["number_of_days_retention"] is None):
+        payload["numberOfDaysRetention"] = 7
+
     if "auto_purge_enabled" in module.params and module.params["auto_purge_enabled"] is not None:
         payload["AutoPurgeEnabled"] = module.params["auto_purge_enabled"]
 
@@ -304,7 +308,8 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
             return True, result, response.getcode()
 
         except (HTTPError, httplib.HTTPException) as http_exception:
-            logging.info("response: %s", http_exception.read().decode("utf-8"))
+            exception_body = http_exception.read().decode("utf-8")
+            logging.info("response: %s", exception_body)
             module.fail_json(
                 msg=(
                     "Error while performing safe_add_or_update."
@@ -315,6 +320,7 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
                 payload=payload,
                 headers=headers,
                 status_code=http_exception.code,
+                exception_body=exception_body
             )
         except Exception as unknown_exception:
             module.fail_json(
@@ -397,8 +403,8 @@ def main():
             description=dict(type="str"),
             location=dict(type="str"),
             managing_cpm=dict(type="str"),
-            number_of_versions_retention=dict(type="int"),
-            number_of_days_retention=dict(type="int", default=7),
+            number_of_versions_retention=dict(type="int", default=None),
+            number_of_days_retention=dict(type="int", default=None),
             auto_purge_enabled=dict(type="bool", default=False),
             logging_level=dict(
                 type="str", choices=["NOTSET", "DEBUG", "INFO"]
