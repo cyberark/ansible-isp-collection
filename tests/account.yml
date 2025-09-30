@@ -12,6 +12,7 @@
 
     - name: Account
       cyberark.isp.cyberark_account:
+        api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         identified_by: "address,username"
         safe: "Partner-TEST"
         address: "cyberark.local"

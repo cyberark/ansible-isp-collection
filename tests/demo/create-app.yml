@@ -42,7 +42,7 @@
         image: "mysql"
         env:
           MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
-          MYSQL_DATABASE: {{ mysql_db }}  
+          MYSQL_DATABASE: "{{ mysql_db }}"
           priv: "*.*:ALL"
           MYSQL_USER: "{{ mysql_username }}"
           MYSQL_PASSWORD: "{{ mysql_password }}"
