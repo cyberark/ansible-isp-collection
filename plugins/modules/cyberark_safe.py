@@ -88,7 +88,6 @@ options:
         description:
             - The number of days that password versions are saved in the Safe.
         type: int
-        default: 7
     auto_purge_enabled:
         description:
             - Whether or not to automatically purge files after the end of the Object History
