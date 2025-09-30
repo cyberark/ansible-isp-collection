@@ -14,16 +14,16 @@ authors:
 description: "This is a Collection of the CyberArk ISP Ansible Security Automation toolkit."
 license: [Apache-2.0]
 tags:
-    - cyberark
-    - access
-    - security
-    - account
-    - epv
-    - vault
-    - identity
-    - credential
-    - secret
-    - privileged
+  - cyberark
+  - access
+  - security
+  - account
+  - epv
+  - vault
+  - identity
+  - credential
+  - secret
+  - privileged
 dependencies: {}
 
 repository: "https://github.com/cyberark/ansible-isp-collection"

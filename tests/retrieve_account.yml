@@ -13,6 +13,7 @@
 
     - name: Retrieve account and password
       cyberark.isp.cyberark_account:
+        api_base_url: "https://tenant.privilegecloud.cyberark.cloud"
         identified_by: "address,username"
         safe: "Test"
         address: "cyberark.local"
