@@ -10,7 +10,7 @@ This collection is the CyberArk Identity Security Platform (ISP) project and can
 
 ## Requirements
 
-- Ansible Core 2.15.0 or above
+- Ansible Core 2.16.0 or above
 - CyberArk Privilege Cloud REST APIs
 - CyberArk Central Credential Provider (**Only required for cyberark_credential**)
 
