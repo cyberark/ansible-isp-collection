@@ -5,7 +5,7 @@
 
 namespace: "cyberark"
 name: "isp"
-version: 1.0.7
+version: 1.0.8
 readme: README.md
 authors:
   - "@cyberark-bizdev"
@@ -28,7 +28,7 @@ dependencies: {}
 
 repository: "https://github.com/cyberark/ansible-isp-collection"
 issues: https://github.com/cyberark/ansible-isp-collection/issues
-documentation: https://github.com/cyberark/ansible-isp-collection/README.md
+documentation: https://github.com/cyberark/ansible-isp-collection/blob/main/README.md
 homepage: https://www.cyberark.com
 
 # A list of file glob-like patterns used to filter any files or directories that should not be included in the build
@@ -38,6 +38,9 @@ homepage: https://www.cyberark.com
 build_ignore:
   - .gitignore
   - changelogs/.plugin-cache.yaml
+  - .DS_Store                                      
+  - .ansible                                     
+  - .vscode      
 # A dict controlling use of manifest directives used in building the collection artifact. The key 'directives' is a
 # list of MANIFEST.in style
 # L(directives,https://packaging.python.org/en/latest/guides/using-manifest-in/#manifest-in-commands). The key

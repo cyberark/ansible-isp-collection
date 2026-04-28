@@ -35,6 +35,14 @@ options:
             - Example U(https://<IIS_Server_Ip>/PasswordVault/api/)
         required: true
         type: str
+    validate_certs:
+        description:
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
+        required: false
+        default: true
+        type: bool
     app_id:
         description:
             - The name of the Application.
@@ -266,7 +274,7 @@ def application_details(module):
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     result = {}
     end_point = "/PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}".format(pappid=quote(app_id))
@@ -355,7 +363,7 @@ def authentication_method_process(module, existing_info) -> bool:
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
     headers = telemetry_headers(cyberark_session)
 
     authentication = module.params["authentication"]
@@ -483,7 +491,7 @@ def application_add_or_update(module, http_method, existing_info):
     app_id = module.params["app_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     result = {}
     payload = {"AppID": app_id}
@@ -713,6 +721,7 @@ def main():
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
+            validate_certs=dict(type="bool", default=True),
             timeout=dict(type="float", default=10),
         ),
         # required_if=required_if

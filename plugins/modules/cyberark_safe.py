@@ -35,6 +35,14 @@ options:
               CyberArk's Privileged Cloud ISP SDK.
         type: str
         required: true
+    validate_certs:
+        description:
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
+        required: false
+        default: true
+        type: bool
     safe_name:
         description:
             - The unique name of the Safe.
@@ -170,7 +178,7 @@ def safe_details(module):
     safe_name = module.params["safe_name"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {}
@@ -225,7 +233,7 @@ def safe_add_or_update(module, HTTPMethod, existing_info):
     safe_name = module.params["safe_name"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, paylod, and headers
     result = {}
@@ -342,6 +350,7 @@ def safe_delete(module):
     safe_name = module.params["safe_name"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {}
@@ -356,7 +365,7 @@ def safe_delete(module):
             url,
             method="DELETE",
             headers=headers,
-            # validate_certs=validate_certs,
+            validate_certs=validate_certs,
             timeout=module.params['timeout'],
         )
 
@@ -411,6 +420,7 @@ def main():
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
+            validate_certs=dict(type="bool", default=True),
             timeout=dict(type="float", default=10),
         )
     )

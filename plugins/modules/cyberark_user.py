@@ -35,6 +35,14 @@ options:
               CyberArk's Privileged Cloud ISP SDK.
         type: str
         required: true
+    validate_certs:
+        description:
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
+        required: false
+        default: true
+        type: bool
     username:
         description:
             - The name of the user who will be queried (for details), added,
@@ -385,7 +393,7 @@ def user_details(module):
     # along with the cyberark_session established
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {}
@@ -449,7 +457,7 @@ def user_add_or_update(module, HTTPMethod, existing_info):
     username = module.params["username"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, paylod, and headers
     result = {}
@@ -699,6 +707,7 @@ def user_delete(module):
     # along with validate_certs from the cyberark_session established
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {}
@@ -718,6 +727,7 @@ def user_delete(module):
             url,
             method="DELETE",
             headers=headers,
+            validate_certs=validate_certs,
             timeout=module.params['timeout'],
         )
 
@@ -761,7 +771,7 @@ def resolve_group_name_to_id(module):
     group_name = module.params["group_name"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
     headers = telemetryHeaders(cyberark_session)
     url = construct_url(api_base_url, "/PasswordVault/api/UserGroups?filter=groupName%20eq%20{pgroupname}".format(pgroupname=quote(group_name)))
     try:
@@ -815,7 +825,7 @@ def user_add_to_group(module):
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, headers and payload
     result = {}
@@ -953,6 +963,7 @@ def main():
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
+            validate_certs=dict(type="bool", default=True),
             group_name=dict(type="str"),
             vault_id=dict(type="int"),
             member_type=dict(type="str"),

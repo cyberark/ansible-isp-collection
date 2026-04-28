@@ -247,7 +247,7 @@ def retrieve_credential(module):
     if "client_key" in module.params:
         client_key = module.params["client_key"]
 
-    if "path" in module.params:
+    if "path" in module.params and module.params["path"] is not None:
         path = module.params["path"]
 
     end_point = (

@@ -32,6 +32,14 @@ options:
             - The base URL for PVWA REST APIs.
         type: str
         required: true
+    validate_certs:
+        type: bool
+        required: false
+        default: true
+        description:
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
     platform_id:
         description:
             - The unique ID/Name of the platform.
@@ -152,7 +160,7 @@ def platform_details_for_class(base_result, module):
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     platform_class = module.params["platform_class"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
     platform_name = base_result["Details"]["PolicyName"]
 
     # Prepare result, end_point, and headers
@@ -221,7 +229,7 @@ def platform_details(module, error_if_details_not_found=True):
     platform_id = module.params["platform_id"]
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {}
@@ -298,7 +306,7 @@ def platform_class_update(module, existing_info):
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     platform_class = module.params["platform_class"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare end_point, and headers
     end_point = ""
@@ -370,7 +378,7 @@ def platform_class_duplicate(module):
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     platform_class = module.params["platform_class"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
     duplicate_from_platform_id = module.params["duplicate_from_platform"]
     duplicate_module = copy.deepcopy(module)
     duplicate_module.params["platform_id"] = duplicate_from_platform_id
@@ -453,7 +461,7 @@ def platform_delete(module):
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     platform_class = module.params["platform_class"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
     result = {}
 
     (changed, result, status_code) = platform_details(module, error_if_details_not_found=False)
@@ -534,6 +542,7 @@ def main():
             logging_file=dict(type="str", default="/tmp/ansible_cyberark.log"),
             cyberark_session=dict(type="dict", required=True),
             api_base_url=dict(type="str", required=True),
+            validate_certs=dict(type="bool", default=True),
             timeout=dict(type="float", default=10),
         )
     )

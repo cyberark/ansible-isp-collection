@@ -14,6 +14,10 @@ This collection is the CyberArk Identity Security Platform (ISP) project and can
 - CyberArk Privilege Cloud REST APIs
 - CyberArk Central Credential Provider (**Only required for cyberark_credential**)
 
+## Release Notes
+
+See the [CHANGELOG.md](https://github.com/cyberark/ansible-isp-collection/blob/master/CHANGELOG.md) for a full list of changes and version history.
+
 ## Installation
 
 Before using this collection, you need to install it with the Ansible Galaxy command-line tool:

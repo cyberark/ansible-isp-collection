@@ -53,6 +53,14 @@ options:
             - A string containing the base URL of the server hosting
               CyberArk's Privileged Cloud ISP SDK.
         type: str
+    validate_certs:
+        description:
+            - If C(false), SSL certificate chain will not be validated.  This
+              should only set to C(true) if you have a root CA certificate
+              installed on each node.
+        required: false
+        default: true
+        type: bool
     timeout:
         description:
             - Allows you set a timeout for when your authenticating to Cyberark
@@ -166,7 +174,7 @@ def processAuthentication(module):
                 method="POST",
                 headers=headers,
                 data=urlencode(payload_dict).encode("utf-8"),
-                validate_certs=False,
+                validate_certs=module.params["validate_certs"],
                 timeout=timeout,
             )
 
@@ -217,6 +225,7 @@ def main():
     """Main entry point for the module."""
     fields = {
         "api_base_url": {"type": "str"},
+        "validate_certs": {"type": "bool", "default": True},
         "client_id": {"type": "str"},
         "client_secret": {"type": "str", "no_log": True},
         "grant_type": {

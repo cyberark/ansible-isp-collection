@@ -482,7 +482,7 @@ def update_account(module, existing_account):
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {"result": existing_account}
@@ -719,7 +719,7 @@ def add_account(module):
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Prepare result, end_point, and headers
     result = {}
@@ -852,7 +852,7 @@ def delete_account(module, existing_account):
 
         cyberark_session = module.params["cyberark_session"]
         api_base_url = module.params["api_base_url"]
-        validate_certs = False
+        validate_certs = module.params["validate_certs"]
 
         # Prepare result, end_point, and headers
         result = {}
@@ -907,7 +907,7 @@ def reset_account_if_needed(module, existing_account):
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     # Credential changes
     management_action = deep_get(
@@ -1086,7 +1086,7 @@ def get_account(module):
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     end_point = None
     if search_string is not None and safe_filter is not None:
@@ -1182,7 +1182,7 @@ def retrieve_password(module, existing_account):
 
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
-    validate_certs = False
+    validate_certs = module.params["validate_certs"]
 
     result = existing_account
     HTTPMethod = "POST"
@@ -1258,7 +1258,7 @@ def main():
         "logging_level": {"type": "str", "choices": ["NOTSET", "DEBUG", "INFO"]},
         "logging_file": {"type": "str", "default": "/tmp/ansible_cyberark.log"},
         "api_base_url": {"type": "str", "required": True},
-        "validate_certs": {"type": "bool", "default": "true"},
+        "validate_certs": {"type": "bool", "default": True},
         "cyberark_session": {"required": True, "type": "dict", "no_log": True},
         "identified_by": {
             "required": False,
