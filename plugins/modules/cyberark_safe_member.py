@@ -282,13 +282,16 @@ status_code:
 """
 
 import json
-import base64
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
 from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
+from ansible_collections.cyberark.isp.plugins.module_utils.feature_adoption import (
+    report_adoption,
+    start_timer,
+)
 from ansible.module_utils.six.moves.urllib.parse import quote
 import logging
 
@@ -298,14 +301,11 @@ def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
 
-def telemetryHeaders(session=None):
+def request_headers(session=None):
     """Generates telemetry headers for API requests."""
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(
-            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
-        ).decode("utf-8"),
     }
 
     if session is not None:
@@ -332,7 +332,7 @@ def safe_member_details(module):
     )
     url = construct_url(api_base_url, end_point)
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
     logging.info(headers)
 
     try:
@@ -392,7 +392,7 @@ def safe_member_add_or_update(module, HTTPMethod, existing_info):
     result = {}
     payload = {"safeName": safe_name, "memberName": member_name, "memberType": member_type}
     end_point = ""
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     # end_point and payload sets different depending on POST/PUT
     # for POST -- create -- payload contains safename
@@ -496,7 +496,7 @@ def safe_member_delete(module):
     end_point = "PasswordVault/api/Safes/{psafename}/Members/{pmembername}/".format(
         psafename=quote(safe_name), pmembername=quote(member_name)
     )
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
     url = construct_url(api_base_url, end_point)
 
     try:
@@ -547,6 +547,7 @@ def safe_member_delete(module):
 
 
 def main():
+    started_at = start_timer()
     """Main function for the module."""
 
     module = AnsibleModule(
@@ -614,6 +615,8 @@ def main():
             (changed, result, status_code) = safe_member_add_or_update(module, "POST", None)
     elif state == "absent":
         (changed, result, status_code) = safe_member_delete(module)
+
+    report_adoption(module, "cyberark_safe_member", started_at, changed=changed)
 
     module.exit_json(changed=changed, cyberark_safe_member=result, status_code=status_code)
 

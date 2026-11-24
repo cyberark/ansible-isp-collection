@@ -242,13 +242,16 @@ status_code:
 """
 
 import json
-import base64
 import logging
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
 from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
+from ansible_collections.cyberark.isp.plugins.module_utils.feature_adoption import (
+    report_adoption,
+    start_timer,
+)
 from ansible.module_utils.six.moves.urllib.parse import quote
 
 
@@ -256,13 +259,10 @@ def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
 
-def telemetry_headers(session=None):
+def request_headers(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(
-            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
-        ).decode("utf-8")
     }
 
     if session is not None:
@@ -280,7 +280,7 @@ def application_details(module):
     end_point = "/PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}".format(pappid=quote(app_id))
     url = construct_url(api_base_url, end_point)
 
-    headers = telemetry_headers(cyberark_session)
+    headers = request_headers(cyberark_session)
     logging.info(headers)
 
     try:
@@ -364,7 +364,7 @@ def authentication_method_process(module, existing_info) -> bool:
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = module.params["validate_certs"]
-    headers = telemetry_headers(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     authentication = module.params["authentication"]
     logging.info("authentication: %s", json.dumps(authentication))
@@ -496,7 +496,7 @@ def application_add_or_update(module, http_method, existing_info):
     result = {}
     payload = {"AppID": app_id}
     end_point = ""
-    headers = telemetry_headers(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     if http_method == "POST":
         end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/"
@@ -625,7 +625,7 @@ def application_delete(module):
 
     result = {}
     end_point = "PasswordVault/WebServices/PIMServices.svc/Applications/{pappid}".format(pappid=quote(app_id))
-    headers = telemetry_headers(cyberark_session)
+    headers = request_headers(cyberark_session)
     url = construct_url(api_base_url, end_point)
 
     try:
@@ -670,6 +670,7 @@ def application_delete(module):
 
 
 def main():
+    started_at = start_timer()
     # required_if = [
     #     ("AuthType", "path", ["AuthValue", "IsFolder", "AllowInternalScripts"]),
     #     ("AuthType", "hash", ["AuthValue"]),
@@ -745,6 +746,8 @@ def main():
             changed, result, status_code = application_add_or_update(module, "POST", None)
     elif state == "absent":
         changed, result, status_code = application_delete(module)
+
+    report_adoption(module, "cyberark_application", started_at, changed=changed)
 
     module.exit_json(changed=changed, cyberark_application=result, status_code=status_code)
 

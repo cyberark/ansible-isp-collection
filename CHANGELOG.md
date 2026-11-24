@@ -1,3 +1,9 @@
+## 1.0.9
+- Added Feature Adoption Service (FAS) usage reporting, using the platform token the modules already authenticate with.
+  Reporting is best effort, never affects task results, and can be disabled by setting the
+  `IDSEC_DISABLE_TELEMETRY_COLLECTION` environment variable. See the README for details.
+- Removed the legacy `x-cybr-telemetry` request header (and the `telemetryHeaders` helpers) in favor of Feature Adoption reporting.
+
 ## 1.0.8
 - Exposed validate_certs parameter for all modules
 

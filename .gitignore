@@ -1,3 +1,7 @@
 /.ansible
 .DS_Store
 *.gz
+
+.idea/
+
+*.pyc

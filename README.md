@@ -113,6 +113,40 @@ There is a list of different modules to perform different tasks:
 [Playbooks and Module Info](https://github.com/cyberark/ansible-isp-collection/blob/main/docs/cyberark_credential.md)
 
 
+### Usage reporting (Feature Adoption)
+
+After a module completes successfully, the collection sends a single usage event to the
+CyberArk Feature Adoption Service (FAS).
+The event is authenticated with the platform token the module is already using, and
+contains no secrets, no account, safe or user names, and no task parameters. It reports:
+
+| Field | Description | Example |
+| :--- | :--- | :--- |
+| `module` | Module that ran | `cyberark_safe` |
+| `state` | The module `state` parameter, when it has one | `present` |
+| `collection_version` | Version of this collection | `1.0.9` |
+| `changed` | Whether the task changed anything | `true` |
+| `duration` | Module run time in milliseconds | `120` |
+
+Reporting is best effort. It uses a 5 second timeout, never fails or changes the result of a
+task, and is skipped in check mode, when no platform token is available, and when the FAS
+address cannot be derived from `api_base_url` (for example vanity URLs). The `cyberark_credential`
+module authenticates to the Central Credential Provider with a client certificate rather than
+a platform token, so it does not report.
+
+To opt out, set `IDSEC_DISABLE_TELEMETRY_COLLECTION` to any non-empty value, for example per play:
+
+```yaml
+- hosts: localhost
+  environment:
+    IDSEC_DISABLE_TELEMETRY_COLLECTION: "true"
+  tasks:
+    - cyberark.isp.cyberark_safe:
+        ...
+```
+
+To send events to a different FAS endpoint (for example for testing), set `FAS_BASE_URL`.
+
 ### Author Information
 - CyberArk Business Development Technical Team 
     - @cyberark-bizdev

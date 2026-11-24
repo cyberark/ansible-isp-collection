@@ -388,10 +388,13 @@ result:
 from ansible.module_utils._text import to_text
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import open_url
+from ansible_collections.cyberark.isp.plugins.module_utils.feature_adoption import (
+    report_adoption,
+    start_timer,
+)
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import quote
 from ansible.module_utils.six.moves.http_client import HTTPException
-import base64
 import json
 import logging
 
@@ -454,11 +457,10 @@ ansible_reference_fieldnames = {
 }
 
 
-def telemetryHeaders(session=None):
+def request_headers(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
     }
 
     if session is not None:
@@ -492,7 +494,7 @@ def update_account(module, existing_account):
     HTTPMethod = "PATCH"
     end_point = "/PasswordVault/api/Accounts/%s/" % existing_account["id"]
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     payload = {"Operations": []}
 
@@ -726,7 +728,7 @@ def add_account(module):
     HTTPMethod = "POST"
     end_point = "/PasswordVault/api/Accounts"
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     payload = {"safeName": module.params["safe"]}
 
@@ -858,7 +860,7 @@ def delete_account(module, existing_account):
         result = {}
         HTTPMethod = "DELETE"
         end_point = "/PasswordVault/api/Accounts/%s" % existing_account["id"]
-        headers = telemetryHeaders(cyberark_session)
+        headers = request_headers(cyberark_session)
 
         try:
 
@@ -979,7 +981,7 @@ def reset_account_if_needed(module, existing_account):
             logging.info("Proceeding with Credential Rotation")
 
             result = {"result": None}
-            headers = telemetryHeaders(cyberark_session)
+            headers = request_headers(cyberark_session)
             HTTPMethod = "POST"
             try:
 
@@ -1101,7 +1103,7 @@ def get_account(module):
 
     logging.info("End Point => %s", end_point)
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     try:
 
@@ -1188,7 +1190,7 @@ def retrieve_password(module, existing_account):
     HTTPMethod = "POST"
     end_point = "/PasswordVault/api/Accounts/%s/Password/Retrieve" % existing_account["id"]
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     try:
 
@@ -1248,6 +1250,7 @@ def retrieve_password(module, existing_account):
 
 
 def main():
+    started_at = start_timer()
 
     fields = {
         "state": {
@@ -1361,6 +1364,8 @@ def main():
 
     elif found and state == "retrieve":
         (changed, result, status_code) = retrieve_password(module, account_record)
+
+    report_adoption(module, "cyberark_account", started_at, changed=changed)
 
     module.exit_json(changed=changed, result=result, status_code=status_code)
 

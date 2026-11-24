@@ -203,7 +203,6 @@ result:
             returned: if CPM management is disabled and a reason is given
 """
 
-import base64
 import json
 import traceback
 from ansible.module_utils._text import to_text
@@ -212,21 +211,6 @@ from ansible.module_utils.urls import open_url
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import quote
 from ansible.module_utils.six.moves.http_client import HTTPException
-
-
-def telemetry_headers(session=None):
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(
-            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
-        ).decode("utf-8")
-    }
-
-    if session is not None:
-        headers["Authorization"] = "Bearer " + session["access_token"]
-
-    return headers
 
 
 def retrieve_credential(module):
