@@ -360,7 +360,6 @@ status_code:
 """
 
 import json
-import base64
 import logging
 
 from ansible.module_utils.basic import AnsibleModule
@@ -368,6 +367,10 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.urls import open_url
+from ansible_collections.cyberark.isp.plugins.module_utils.feature_adoption import (
+    report_adoption,
+    start_timer,
+)
 from ansible.module_utils.six.moves.urllib.parse import quote
 
 
@@ -375,11 +378,10 @@ def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
 
-def telemetryHeaders(session=None):
+def request_headers(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows').decode("utf-8")
     }
 
     if session is not None:
@@ -403,7 +405,7 @@ def user_details(module):
         end_point = "/PasswordVault/api/Users/{puserid}".format(puserid=userid)
         url = construct_url(api_base_url, end_point)
 
-        headers = telemetryHeaders(cyberark_session)
+        headers = request_headers(cyberark_session)
         logging.info(headers)
 
         try:
@@ -464,7 +466,7 @@ def user_add_or_update(module, HTTPMethod, existing_info):
     payload = {}
     payload["username"] = username
     end_point = ""
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     # end_point and payload sets different depending on POST/PUT
     # for POST -- create -- payload contains username
@@ -661,7 +663,7 @@ def resolve_username_to_id(module):
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     url = construct_url(api_base_url, "PasswordVault/api/Users?userName={pusername}".format(pusername=username))
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     try:
         response = open_url(
@@ -717,7 +719,7 @@ def user_delete(module):
         return (False, result, None)
 
     end_point = ("PasswordVault/api/Users/{pvaultuserid}").format(pvaultuserid=vault_user_id)
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
     url = construct_url(api_base_url, end_point)
 
     try:
@@ -772,7 +774,7 @@ def resolve_group_name_to_id(module):
     cyberark_session = module.params["cyberark_session"]
     api_base_url = module.params["api_base_url"]
     validate_certs = module.params["validate_certs"]
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
     url = construct_url(api_base_url, "/PasswordVault/api/UserGroups?filter=groupName%20eq%20{pgroupname}".format(pgroupname=quote(group_name)))
     try:
         response = open_url(
@@ -829,7 +831,7 @@ def user_add_to_group(module):
 
     # Prepare result, end_point, headers and payload
     result = {}
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
 
     # If we went "old school" and were provided a group_name instead of a vault_id we need to resolve it
     if group_name and not vault_id:
@@ -898,6 +900,7 @@ def user_add_to_group(module):
 
 
 def main():
+    started_at = start_timer()
 
     module = AnsibleModule(
         argument_spec=dict(
@@ -1001,6 +1004,8 @@ def main():
 
     elif state == "absent":
         (changed, result, status_code) = user_delete(module)
+
+    report_adoption(module, "cyberark_user", started_at, changed=changed)
 
     module.exit_json(changed=changed, cyberark_user=result, status_code=status_code)
 

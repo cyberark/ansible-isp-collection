@@ -123,7 +123,6 @@ status_code:
     type: int
     sample: 200
 """
-import base64
 import copy
 import json
 import logging
@@ -133,19 +132,20 @@ from ansible.module_utils.six.moves import http_client as httplib
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import quote
 from ansible.module_utils.urls import open_url
+from ansible_collections.cyberark.isp.plugins.module_utils.feature_adoption import (
+    report_adoption,
+    start_timer,
+)
 
 
 def construct_url(api_base_url, end_point):
     return "{baseurl}/{endpoint}".format(baseurl=api_base_url.rstrip("/"), endpoint=end_point.lstrip("/"))
 
 
-def telemetryHeaders(session=None):
+def request_headers(session=None):
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(
-            b'in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows'
-        ).decode("utf-8")
     }
 
     if session is not None:
@@ -171,7 +171,7 @@ def platform_details_for_class(base_result, module):
     )
     url = construct_url(api_base_url, end_point)
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
     logging.info(headers)
 
     try:
@@ -237,7 +237,7 @@ def platform_details(module, error_if_details_not_found=True):
     end_point = "/PasswordVault/api/Platforms/{pplatformid}".format(pplatformid=quote(platform_id))
     url = construct_url(api_base_url, end_point)
 
-    headers = telemetryHeaders(cyberark_session)
+    headers = request_headers(cyberark_session)
     logging.info(headers)
 
     try:
@@ -324,7 +324,7 @@ def platform_class_update(module, existing_info):
 
         url = construct_url(api_base_url, end_point)
 
-        headers = telemetryHeaders(cyberark_session)
+        headers = request_headers(cyberark_session)
         logging.info(headers)
 
         try:
@@ -398,7 +398,7 @@ def platform_class_duplicate(module):
         logging.info("payload: %s", payload)
         url = construct_url(api_base_url, end_point)
 
-        headers = telemetryHeaders(cyberark_session)
+        headers = request_headers(cyberark_session)
         logging.info(headers)
 
         try:
@@ -476,7 +476,7 @@ def platform_delete(module):
         end_point = "/PasswordVault/api/Platforms/{pplatformclass}s/{pinternalid}/".format(
             pplatformclass=quote(platform_class), pinternalid=internal_id
         )
-        headers = telemetryHeaders(cyberark_session)
+        headers = request_headers(cyberark_session)
         url = construct_url(api_base_url, end_point)
 
         try:
@@ -527,6 +527,7 @@ def platform_delete(module):
 
 
 def main():
+    started_at = start_timer()
 
     module = AnsibleModule(
         argument_spec=dict(
@@ -568,6 +569,8 @@ def main():
                 (changed, result, status_code) = platform_class_duplicate(module)
     elif state == "absent":
         (changed, result, status_code) = platform_delete(module)
+
+    report_adoption(module, "cyberark_platform", started_at, changed=changed)
 
     module.exit_json(changed=changed, cyberark_safe=result, status_code=status_code)
 

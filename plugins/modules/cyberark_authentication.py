@@ -106,16 +106,19 @@ cyberark_session:
 from ansible.module_utils._text import to_text
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import open_url
+from ansible_collections.cyberark.isp.plugins.module_utils.feature_adoption import (
+    report_adoption,
+    start_timer,
+)
 from urllib.parse import urlencode
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.http_client import HTTPException
-import base64
 import json
 
 
-def telemetryHeaders(session=None):
+def request_headers(session=None):
     """
-    Generate telemetry headers for the CyberArk API.
+    Generate request headers for the CyberArk API.
 
     Args:
         session (dict, optional): Session information containing the access token.
@@ -126,9 +129,6 @@ def telemetryHeaders(session=None):
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": "CyberArk/1.0 (Ansible; cyberark.isp)",
-        "x-cybr-telemetry": base64.b64encode(
-            b"in=Ansible ISP Collection&iv=1.0&vn=Red Hat&it=Identity Automation and workflows"
-        ).decode("utf-8"),
     }
 
     if session is not None:
@@ -136,12 +136,13 @@ def telemetryHeaders(session=None):
     return headers
 
 
-def processAuthentication(module):
+def processAuthentication(module, started_at=None):
     """
     Process authentication to CyberArk API.
 
     Args:
         module (AnsibleModule): The Ansible module instance.
+        started_at (float, optional): Marker from start_timer(), used for adoption reporting.
 
     Returns:
         tuple: A tuple containing changed status, result, and return code.
@@ -166,7 +167,7 @@ def processAuthentication(module):
             "client_id": client_id,
             "client_secret": client_secret,
         }
-        headers = telemetryHeaders()
+        headers = request_headers()
 
         try:
             response = open_url(
@@ -200,8 +201,10 @@ def processAuthentication(module):
         return_code = response.getcode()
         if return_code == 200:  # Success
             token = ""
+            session = None
             try:
-                token = str(json.loads(response.read()))
+                session = json.loads(response.read())
+                token = str(session)
             except Exception as e:
                 module.fail_json(
                     msg=f"Error obtaining token\n{to_text(e)}",
@@ -211,6 +214,11 @@ def processAuthentication(module):
 
             # Preparing result of the module
             result = {"cyberark_session": token}
+
+            # Best-effort usage reporting with the freshly issued platform token
+            report_adoption(
+                module, "cyberark_authentication", started_at or start_timer(), changed, session=session
+            )
 
         else:
             module.fail_json(msg=f"Error in end_point => {end_point}", headers=headers)
@@ -223,6 +231,7 @@ def processAuthentication(module):
 
 def main():
     """Main entry point for the module."""
+    started_at = start_timer()
     fields = {
         "api_base_url": {"type": "str"},
         "validate_certs": {"type": "bool", "default": True},
@@ -257,7 +266,7 @@ def main():
         supports_check_mode=True,
     )
 
-    changed, result, status_code = processAuthentication(module)
+    changed, result, status_code = processAuthentication(module, started_at)
 
     module.exit_json(changed=changed, ansible_facts=result, status_code=status_code)
 
